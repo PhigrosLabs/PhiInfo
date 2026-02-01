@@ -1,13 +1,18 @@
 ﻿namespace PhiInfo.CLI;
 
-using System;
-using System.IO;
 using System.IO.Compression;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using PhiInfo.Core;
+
+[JsonSerializable(typeof(Dictionary<string, SongInfo>))]
+[JsonSerializable(typeof(List<Folder>))]
+public partial class JsonContext : JsonSerializerContext
+{
+}
+
 
 struct Files
 {
@@ -36,6 +41,8 @@ class Program
             WriteIndented = true,
         };
 
+        var context = new JsonContext(options);
+
         var phiInfo = new PhiInfo(
             files.ggmBytes,
             files.level0Bytes,
@@ -45,8 +52,8 @@ class Program
         );
         var songInfo = phiInfo.ExtractSongInfo();
         var collectionInfo = phiInfo.ExtractCollection();
-        var songInfoJson = JsonSerializer.Serialize(songInfo, options);
-        var collectionInfoJson = JsonSerializer.Serialize(collectionInfo, options);
+        var songInfoJson = JsonSerializer.Serialize(songInfo, context.DictionaryStringSongInfo);
+        var collectionInfoJson = JsonSerializer.Serialize(collectionInfo, context.ListFolder);
         File.WriteAllText("song_info.json", songInfoJson);
         File.WriteAllText("collection_info.json", collectionInfoJson);
         Console.WriteLine("Song info extracted to song_info.json");
