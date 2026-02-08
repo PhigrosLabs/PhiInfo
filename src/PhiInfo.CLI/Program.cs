@@ -18,11 +18,11 @@ public partial class JsonContext : JsonSerializerContext
 
 struct Files
 {
-    public byte[] ggmBytes;
-    public byte[] level0Bytes;
+    public Stream ggm;
+    public Stream level0;
     public byte[] il2cppBytes;
     public byte[] metadataBytes;
-    public byte[] level22Bytes;
+    public Stream level22;
 }
 
 class Program
@@ -47,11 +47,12 @@ class Program
         var context = new JsonContext(options);
 
         var phiInfo = new PhiInfo(
-            files.ggmBytes,
-            files.level0Bytes,
-            files.level22Bytes,
+            files.ggm,
+            files.level0,
+            files.level22,
             files.il2cppBytes,
-            files.metadataBytes
+            files.metadataBytes,
+            File.OpenRead("classdata.tpk")
         );
         var songInfo = phiInfo.GetSongInfo();
         var collectionInfo = phiInfo.GetCollection();
@@ -74,8 +75,8 @@ class Program
 
     static Files SetupFiles(string apkPath)
     {
-        byte[]? ggmBytes = null;
-        byte[]? level0Bytes = null;
+        Stream? ggm = null;
+        Stream? level0 = null;
         byte[]? il2cppBytes = null;
         byte[]? metadataBytes = null;
         List<(int index, byte[] data)> level22Parts = new List<(int, byte[])>();
@@ -88,10 +89,10 @@ class Program
                 switch (entry.FullName)
                 {
                     case "assets/bin/Data/globalgamemanagers.assets":
-                        ggmBytes = ExtractEntryToMemory(entry);
+                        ggm = ExtractEntryToMemoryStream(entry);
                         break;
                     case "assets/bin/Data/level0":
-                        level0Bytes = ExtractEntryToMemory(entry);
+                        level0 = ExtractEntryToMemoryStream(entry);
                         break;
                     case "lib/arm64-v8a/libil2cpp.so":
                         il2cppBytes = ExtractEntryToMemory(entry);
@@ -109,28 +110,25 @@ class Program
             }
         }
 
-        if (ggmBytes == null || level0Bytes == null || il2cppBytes == null || metadataBytes == null || level22Parts.Count == 0)
+        if (ggm == null || level0 == null || il2cppBytes == null || metadataBytes == null || level22Parts.Count == 0)
             throw new FileNotFoundException("Required Unity assets not found in APK");
 
 
         level22Parts.Sort((a, b) => a.index.CompareTo(b.index));
 
-        byte[] level22Bytes;
-        using (var ms = new MemoryStream())
-        {
-            foreach (var part in level22Parts)
-                ms.Write(part.data, 0, part.data.Length);
+        Stream level22 = new MemoryStream();
+        foreach (var part in level22Parts)
+            level22.Write(part.data, 0, part.data.Length);
 
-            level22Bytes = ms.ToArray();
-        }
+        level22.Position = 0;
 
         var files = new Files
         {
-            ggmBytes = ggmBytes,
-            level0Bytes = level0Bytes,
+            ggm = ggm,
+            level0 = level0,
             il2cppBytes = il2cppBytes,
             metadataBytes = metadataBytes,
-            level22Bytes = level22Bytes
+            level22 = level22
         };
 
         return files;
@@ -144,5 +142,16 @@ class Program
             entryStream.CopyTo(ms);
             return ms.ToArray();
         }
+    }
+
+    static Stream ExtractEntryToMemoryStream(ZipArchiveEntry entry)
+    {
+        var ms = new MemoryStream();
+        using (var entryStream = entry.Open())
+        {
+            entryStream.CopyTo(ms);
+        }
+        ms.Position = 0;
+        return ms;
     }
 }
