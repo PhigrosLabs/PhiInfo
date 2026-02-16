@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using AssetsTools.NET;
 using AssetsTools.NET.Cpp2IL;
@@ -6,37 +7,65 @@ using AssetsTools.NET.Extra;
 
 namespace PhiInfo.Core
 {
-    public partial class PhiInfo
+    public partial class PhiInfo : IDisposable
     {
+        private bool _disposed = false;
         private readonly AssetsFile ggmInst = new();
         private readonly AssetsFile level0Inst = new();
         private readonly AssetsFile level22Inst = new();
-        private readonly ClassDatabaseFile classDatabase = new();
+        private readonly ClassDatabaseFile classDatabase;
 
         private readonly Cpp2IlTempGenerator tempGen;
+
+        private readonly List<AssetsFileReader> _readers = new();
 
         static readonly string lang = "chinese";
         static readonly int langId = 40;
 
         public PhiInfo(
-            Stream globalGameManagers,
-            Stream level0,
-            Stream level22,
-            byte[] il2cppSo,
-            byte[] globalMetadata,
-            Stream cldb)
+        Stream globalGameManagers,
+        Stream level0,
+        Stream level22,
+        byte[] il2cppSo,
+        byte[] globalMetadata,
+        Stream cldb)
         {
-            ggmInst.Read(new AssetsFileReader(globalGameManagers));
+            var ggmReader = new AssetsFileReader(globalGameManagers);
+            _readers.Add(ggmReader);
+            ggmInst.Read(ggmReader);
 
-            var ClassPackage = new ClassPackageFile();
-            ClassPackage.Read(new AssetsFileReader(cldb));
-            classDatabase = ClassPackage.GetClassDatabase(ggmInst.Metadata.UnityVersion);
+            var level0Reader = new AssetsFileReader(level0);
+            _readers.Add(level0Reader);
+            level0Inst.Read(level0Reader);
 
-            level0Inst.Read(new AssetsFileReader(level0));
-            level22Inst.Read(new AssetsFileReader(level22));
+            var level22Reader = new AssetsFileReader(level22);
+            _readers.Add(level22Reader);
+            level22Inst.Read(level22Reader);
+
+            var classPackage = new ClassPackageFile();
+            using (var cldbReader = new AssetsFileReader(cldb))
+            {
+                classPackage.Read(cldbReader);
+            }
+            classDatabase = classPackage.GetClassDatabase(ggmInst.Metadata.UnityVersion);
 
             tempGen = new Cpp2IlTempGenerator(globalMetadata, il2cppSo);
         }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            foreach (var r in _readers)
+            {
+                r.Dispose();
+            }
+            _readers.Clear();
+
+            tempGen.Dispose();
+        }
+
         private AssetTypeValueField GetBaseField(
             AssetsFile file,
             AssetFileInfo info,

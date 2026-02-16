@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.CLI", "src\PhiInfo.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.Core", "src\PhiInfo.Core\PhiInfo.Core.csproj", "{099095A9-87D3-F9B0-CA82-B543F50CFFB4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.NativeAPI", "src\PhiInfo.NativeAPI\PhiInfo.NativeAPI.csproj", "{D8E18E25-EC64-35F8-DA27-7BF2BECD7150}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,6 +24,10 @@ Global
 		{099095A9-87D3-F9B0-CA82-B543F50CFFB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{099095A9-87D3-F9B0-CA82-B543F50CFFB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{099095A9-87D3-F9B0-CA82-B543F50CFFB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8E18E25-EC64-35F8-DA27-7BF2BECD7150}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8E18E25-EC64-35F8-DA27-7BF2BECD7150}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8E18E25-EC64-35F8-DA27-7BF2BECD7150}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8E18E25-EC64-35F8-DA27-7BF2BECD7150}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -29,8 +35,9 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{06CB54B4-AD4E-C294-807D-AE38687A65BF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{099095A9-87D3-F9B0-CA82-B543F50CFFB4} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{D8E18E25-EC64-35F8-DA27-7BF2BECD7150} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {876FD0F6-133B-498F-8455-00F6F752F0D1}
+		SolutionGuid = {732EB251-08E6-47C4-94C3-4B8DB3BBEAE1}
 	EndGlobalSection
 EndGlobal
