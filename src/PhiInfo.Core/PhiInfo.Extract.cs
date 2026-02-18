@@ -67,6 +67,7 @@ namespace PhiInfo.Core
                     result.Add(new SongInfo
                     {
                         id = songId,
+                        key = song["songsKey"].AsString,
                         name = song["songsName"].AsString,
                         composer = song["composer"].AsString,
                         illustrator = song["illustrator"].AsString,
