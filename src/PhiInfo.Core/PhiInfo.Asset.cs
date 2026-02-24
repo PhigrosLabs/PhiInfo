@@ -58,8 +58,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return buffer;
     }
 
-    private T ProcessAssetBundle<T>(Stream file, Func<AssetBundleFile, AssetsFile, T> processor)
+    private T ProcessAssetBundle<T>(string path, Func<AssetBundleFile, AssetsFile, T> processor)
     {
+        var file = getBundle(path);
         var reader = new AssetsFileReader(file);
         AssetBundleFile bun = new();
         bun.Read(reader);
@@ -84,9 +85,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         }
     }
 
-    public Image GetImageRaw(Stream file)
+    public Image GetImageRaw(string path)
     {
-        return ProcessAssetBundle(file, (bun, info_file) =>
+        return ProcessAssetBundle(path, (bun, info_file) =>
         {
             foreach (var info in info_file.AssetInfos)
             {
@@ -107,9 +108,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         });
     }
 
-    public Music GetMusicRaw(Stream file)
+    public Music GetMusicRaw(string path)
     {
-        return ProcessAssetBundle(file, (bun, info_file) =>
+        return ProcessAssetBundle(path, (bun, info_file) =>
         {
             foreach (var info in info_file.AssetInfos)
             {
@@ -128,9 +129,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         });
     }
 
-    public Text GetText(Stream file)
+    public Text GetText(string path)
     {
-        return ProcessAssetBundle(file, (bun, info_file) =>
+        return ProcessAssetBundle(path, (bun, info_file) =>
         {
             foreach (var info in info_file.AssetInfos)
             {
@@ -158,95 +159,81 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return _getBundleStreamFunc(bundlePath.Value.ResolvedKey.Value.StringValue);
     }
 
-    public Dictionary<string, SongAsset> ExtractSongAssets()
+    public Dictionary<string, SongAssetPath> ExtractSongAssetPaths()
     {
-        var result = new ConcurrentDictionary<string, SongAsset>();
+        var result = new Dictionary<string, SongAssetPath>();
         var song_info = phiInfo.ExtractSongInfo();
 
-        Parallel.ForEach(song_info, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, song =>
+        foreach (var song in song_info)
         {
             var path = "Assets/Tracks/" + song.id;
-            try
+            var charts = new Dictionary<string, string>();
+
+            foreach (var diff in song.levels.Keys)
             {
-                var music_bundle = getBundle(path + "/music.wav");
-                var ill_bundle = getBundle(path + "/Illustration.jpg");
-                var ill_low_bundle = getBundle(path + "/IllustrationLowRes.jpg");
-                var ill_blur_bundle = getBundle(path + "/IllustrationBlur.jpg");
-                var charts = new ConcurrentDictionary<string, Text>();
-
-                Parallel.ForEach(song.levels.Keys, diff =>
-                {
-                    var chart_bundle = getBundle(path + $"/Chart_{diff}.json");
-                    charts.TryAdd(diff, GetText(chart_bundle));
-                });
-
-                result.TryAdd(song.id, new SongAsset
-                {
-                    charts = new Dictionary<string, Text>(charts),
-                    music = GetMusicRaw(music_bundle),
-                    illustration = GetImageRaw(ill_bundle),
-                    illustration_low_res = GetImageRaw(ill_low_bundle),
-                    illustration_blur = GetImageRaw(ill_blur_bundle)
-                });
+                charts[diff] = path + $"/Chart_{diff}.json";
             }
-            catch (Exception ex)
+
+            result[song.id] = new SongAssetPath
             {
-                System.Diagnostics.Debug.WriteLine($"Error processing song {song.id}: {ex.Message}");
-            }
-        });
+                charts = charts,
+                music = path + "/music.wav",
+                illustration = path + "/Illustration.jpg",
+                illustration_low_res = path + "/IllustrationLowRes.jpg",
+                illustration_blur = path + "/IllustrationBlur.jpg"
+            };
+        }
 
-        return new Dictionary<string, SongAsset>(result);
+        return result;
     }
 
-    public Dictionary<string, Image> ExtractCollectionCovers()
+    public Dictionary<string, string> ExtractCollectionCoverPaths()
     {
-        var result = new ConcurrentDictionary<string, Image>();
+        var result = new Dictionary<string, string>();
         var collection = phiInfo.ExtractCollection();
 
-        Parallel.ForEach(collection, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, folder =>
+        foreach (var folder in collection)
         {
-            try
-            {
-                var bundle = getBundle(folder.cover);
-                result.TryAdd(folder.cover, GetImageRaw(bundle));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error processing collection cover {folder.cover}: {ex.Message}");
-            }
-        });
+            result[folder.cover] = folder.cover;
+        }
 
-        return new Dictionary<string, Image>(result);
+        return result;
     }
 
-    public Dictionary<string, Image> ExtractAvatars()
+    public Dictionary<string, string> ExtractAvatarPaths()
     {
-        var result = new ConcurrentDictionary<string, Image>();
+        var result = new Dictionary<string, string>();
         var avatars = phiInfo.ExtractAvatars();
 
-        Parallel.ForEach(avatars, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, avatar =>
+        foreach (var avatar in avatars)
         {
-            try
-            {
-                var bundle = getBundle(avatar.addressable_key);
-                result.TryAdd(avatar.addressable_key, GetImageRaw(bundle));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error processing avatar {avatar.addressable_key}: {ex.Message}");
-            }
-        });
+            result[avatar.addressable_key] = avatar.addressable_key;
+        }
 
-        return new Dictionary<string, Image>(result);
+        return result;
     }
 
-    public AllAssets ExtractAllAssets()
+    public Dictionary<string, string> ExtractChapterCoverPaths()
     {
-        return new AllAssets
+        var result = new Dictionary<string, string>();
+        var chapters = phiInfo.ExtractChapters();
+
+        foreach (var chapter in chapters)
         {
-            songs = ExtractSongAssets(),
-            collection_covers = ExtractCollectionCovers(),
-            avatars = ExtractAvatars()
+            result[chapter.code] = "Assets/Tracks/#ChapterCover/" + chapter.code + ".jpg";
+        }
+
+        return result;
+    }
+
+    public AllAssetsPaths ExtractAllAssetsPaths()
+    {
+        return new AllAssetsPaths
+        {
+            songs = ExtractSongAssetPaths(),
+            collection_covers = ExtractCollectionCoverPaths(),
+            avatars = ExtractAvatarPaths(),
+            chapter_covers = ExtractChapterCoverPaths()
         };
     }
 }

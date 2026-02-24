@@ -178,6 +178,41 @@ namespace PhiInfo.Core
             return result;
         }
 
+        public List<ChapterInfo> ExtractChapters()
+        {
+            var result = new List<ChapterInfo>();
+
+            var chapterField = FindMonoBehaviour(
+                level0Inst,
+                "GameInformation"
+            ) ?? throw new Exception("GameInformation MonoBehaviour not found");
+
+            var chaptersArray = chapterField["chapters"]["Array"];
+
+            for (int i = 0; i < chaptersArray.Children.Count; i++)
+            {
+                var chapter = chaptersArray[i];
+                var code = chapter["chapterCode"].AsString;
+                var songInfo = chapter["songInfo"];
+                var banner = songInfo["banner"].AsString;
+                var songsArray = songInfo["songs"]["Array"];
+                var songs = new List<string>();
+                for (int j = 0; j < songsArray.Children.Count; j++)
+                {
+                    songs.Add(songsArray[j]["songsId"].AsString);
+                }
+
+                result.Add(new ChapterInfo
+                {
+                    code = code,
+                    banner = banner,
+                    songs = songs
+                });
+            }
+
+            return result;
+        }
+
         public AllInfo ExtractAll()
         {
             return new AllInfo
@@ -185,7 +220,8 @@ namespace PhiInfo.Core
                 songs = ExtractSongInfo(),
                 collection = ExtractCollection(),
                 avatars = ExtractAvatars(),
-                tips = ExtractTips()
+                tips = ExtractTips(),
+                chapters = ExtractChapters()
             };
         }
     }

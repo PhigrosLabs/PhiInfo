@@ -55,6 +55,7 @@ namespace PhiInfo.Core.Type
         public List<Folder> collection { get; set; }
         public List<Avatar> avatars { get; set; }
         public List<string> tips { get; set; }
+        public List<ChapterInfo> chapters { get; set; }
     }
 
     public struct Catalog
@@ -98,38 +99,30 @@ namespace PhiInfo.Core.Type
         public Dictionary<string, Image> avatars { get; set; }
     }
 
-    // Metadata-only versions for tar packing
-    public struct ImageMetadata
+    // Asset path structures for lazy loading
+    public struct SongAssetPath
     {
-        public int width { get; set; }
-        public int height { get; set; }
-        public int file_id { get; set; }
+        public Dictionary<string, string> charts { get; set; }  // difficulty -> path
+        public string illustration { get; set; }
+        public string illustration_low_res { get; set; }
+        public string illustration_blur { get; set; }
+        public string music { get; set; }
     }
 
-    public struct MusicMetadata
+    public struct AllAssetsPaths
     {
-        public float length { get; set; }
-        public int file_id { get; set; }
+        public Dictionary<string, SongAssetPath> songs { get; set; }
+        public Dictionary<string, string> collection_covers { get; set; }
+        public Dictionary<string, string> avatars { get; set; }
+        public Dictionary<string, string> chapter_covers { get; set; }
     }
 
-    public struct TextMetadata
-    {
-        public int file_id { get; set; }
-    }
+    // ---
 
-    public struct SongAssetMetadata
+    public struct ChapterInfo
     {
-        public Dictionary<string, TextMetadata> charts { get; set; }
-        public ImageMetadata illustration { get; set; }
-        public ImageMetadata illustration_low_res { get; set; }
-        public ImageMetadata illustration_blur { get; set; }
-        public MusicMetadata music { get; set; }
-    }
-
-    public struct AllAssetsMetadata
-    {
-        public Dictionary<string, SongAssetMetadata> songs { get; set; }
-        public Dictionary<string, ImageMetadata> collection_covers { get; set; }
-        public Dictionary<string, ImageMetadata> avatars { get; set; }
+        public string code { get; set; }
+        public string banner { get; set; }
+        public List<string> songs { get; set; }
     }
 }

@@ -11,7 +11,7 @@ using System.Text.Unicode;
 using PhiInfo.Core;
 
 [JsonSerializable(typeof(Core.Type.AllInfo))]
-[JsonSerializable(typeof(Core.Type.AllAssetsMetadata))]
+[JsonSerializable(typeof(AllAssetsMetadata))]
 public partial class JsonContext : JsonSerializerContext
 {
 }
@@ -73,22 +73,22 @@ class Program
 
         using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
         {
-            var allAssets = asset.ExtractAllAssets();
+            var assetPaths = asset.ExtractAllAssetsPaths();
 
             Directory.CreateDirectory(dir);
 
             var tarPacker = new TarPacker();
-            var metadata = tarPacker.ConvertToMetadata(allAssets);
-            tarPacker.PackToTar(dir + "assets.tar", metadata, options, context);
+            var metadata = tarPacker.ConvertToMetadata(assetPaths, asset);
+            tarPacker.PackToTar(dir + "assets.tar", metadata, context);
 
             var allInfo = phiInfo.ExtractAll();
             var allInfoJson = JsonSerializer.Serialize(allInfo, context.AllInfo);
             File.WriteAllText(dir + "all_info.json", allInfoJson);
 
             Console.WriteLine("资源提取完成!");
-            Console.WriteLine($"歌曲数: {allAssets.songs.Count}");
-            Console.WriteLine($"收藏集: {allAssets.collection_covers.Count}");
-            Console.WriteLine($"头像数: {allAssets.avatars.Count}");
+            Console.WriteLine($"歌曲数: {assetPaths.songs.Count}");
+            Console.WriteLine($"收藏集: {assetPaths.collection_covers.Count}");
+            Console.WriteLine($"头像数: {assetPaths.avatars.Count}");
         }
     }
 
