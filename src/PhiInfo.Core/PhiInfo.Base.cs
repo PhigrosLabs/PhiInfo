@@ -63,10 +63,14 @@ namespace PhiInfo.Core
             }
             _readers.Clear();
 
+            level0Inst.Close();
+            level22Inst.Close();
+            ggmInst.Close();
+
             tempGen.Dispose();
         }
 
-        private AssetTypeValueField GetBaseField(
+        internal AssetTypeValueField GetBaseField(
             AssetsFile file,
             AssetFileInfo info,
             bool MonoFields = false)

@@ -56,4 +56,80 @@ namespace PhiInfo.Core.Type
         public List<Avatar> avatars { get; set; }
         public List<string> tips { get; set; }
     }
+
+    public struct Catalog
+    {
+        public string m_KeyDataString { get; set; }
+        public string m_BucketDataString { get; set; }
+        public string m_EntryDataString { get; set; }
+    }
+
+    public struct Image
+    {
+        public int width { get; set; }
+        public int height { get; set; }
+        public byte[] data { get; set; }
+    }
+
+    public struct Music
+    {
+        public float length { get; set; }
+        public byte[] data { get; set; }
+    }
+
+    public struct Text
+    {
+        public string content { get; set; }
+    }
+
+    public struct SongAsset
+    {
+        public Dictionary<string, Text> charts { get; set; }
+        public Image illustration { get; set; }
+        public Image illustration_low_res { get; set; }
+        public Image illustration_blur { get; set; }
+        public Music music { get; set; }
+    }
+
+    public struct AllAssets
+    {
+        public Dictionary<string, SongAsset> songs { get; set; }
+        public Dictionary<string, Image> collection_covers { get; set; }
+        public Dictionary<string, Image> avatars { get; set; }
+    }
+
+    // Metadata-only versions for tar packing
+    public struct ImageMetadata
+    {
+        public int width { get; set; }
+        public int height { get; set; }
+        public int file_id { get; set; }
+    }
+
+    public struct MusicMetadata
+    {
+        public float length { get; set; }
+        public int file_id { get; set; }
+    }
+
+    public struct TextMetadata
+    {
+        public int file_id { get; set; }
+    }
+
+    public struct SongAssetMetadata
+    {
+        public Dictionary<string, TextMetadata> charts { get; set; }
+        public ImageMetadata illustration { get; set; }
+        public ImageMetadata illustration_low_res { get; set; }
+        public ImageMetadata illustration_blur { get; set; }
+        public MusicMetadata music { get; set; }
+    }
+
+    public struct AllAssetsMetadata
+    {
+        public Dictionary<string, SongAssetMetadata> songs { get; set; }
+        public Dictionary<string, ImageMetadata> collection_covers { get; set; }
+        public Dictionary<string, ImageMetadata> avatars { get; set; }
+    }
 }

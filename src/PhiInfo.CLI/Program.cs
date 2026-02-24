@@ -11,6 +11,7 @@ using System.Text.Unicode;
 using PhiInfo.Core;
 
 [JsonSerializable(typeof(Core.Type.AllInfo))]
+[JsonSerializable(typeof(Core.Type.AllAssetsMetadata))]
 public partial class JsonContext : JsonSerializerContext
 {
 }
@@ -23,6 +24,8 @@ struct Files
     public byte[] il2cppBytes;
     public byte[] metadataBytes;
     public Stream level22;
+    public Stream catalogJson;
+    public Dictionary<string, byte[]> bundleCache;
 }
 
 class Program
@@ -56,10 +59,37 @@ class Program
             File.OpenRead("classdata.tpk")
         );
 
-        var allInfo = phiInfo.ExtractAll();
-        var allInfoJson = JsonSerializer.Serialize(allInfo, context.AllInfo);
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(dir + "all_info.json", allInfoJson);
+        files.catalogJson.Position = 0;
+        var catalogParser = new CatalogParser(files.catalogJson);
+
+        Func<string, Stream> getBundleStreamFunc = (bundleName) =>
+        {
+            if (files.bundleCache.TryGetValue(bundleName, out var bundleData))
+            {
+                return new MemoryStream(bundleData);
+            }
+            throw new FileNotFoundException($"Bundle not found in cache: {bundleName}");
+        };
+
+        using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
+        {
+            var allAssets = asset.ExtractAllAssets();
+
+            Directory.CreateDirectory(dir);
+
+            var tarPacker = new TarPacker();
+            var metadata = tarPacker.ConvertToMetadata(allAssets);
+            tarPacker.PackToTar(dir + "assets.tar", metadata, options, context);
+
+            var allInfo = phiInfo.ExtractAll();
+            var allInfoJson = JsonSerializer.Serialize(allInfo, context.AllInfo);
+            File.WriteAllText(dir + "all_info.json", allInfoJson);
+
+            Console.WriteLine("资源提取完成!");
+            Console.WriteLine($"歌曲数: {allAssets.songs.Count}");
+            Console.WriteLine($"收藏集: {allAssets.collection_covers.Count}");
+            Console.WriteLine($"头像数: {allAssets.avatars.Count}");
+        }
     }
 
     static Files SetupFiles(string apkPath)
@@ -68,7 +98,9 @@ class Program
         Stream? level0 = null;
         byte[]? il2cppBytes = null;
         byte[]? metadataBytes = null;
+        Stream? catalogJson = null;
         List<(int index, byte[] data)> level22Parts = new List<(int, byte[])>();
+        var bundleCache = new Dictionary<string, byte[]>();
 
         using (var apkFs = File.OpenRead(apkPath))
         using (var zip = new ZipArchive(apkFs, ZipArchiveMode.Read))
@@ -89,12 +121,22 @@ class Program
                     case "assets/bin/Data/Managed/Metadata/global-metadata.dat":
                         metadataBytes = ExtractEntryToMemory(entry);
                         break;
+                    case "assets/aa/catalog.json":
+                        catalogJson = ExtractEntryToMemoryStream(entry);
+                        break;
                 }
+
                 if (entry.FullName.StartsWith("assets/bin/Data/level22.split"))
                 {
                     string suffix = entry.FullName["assets/bin/Data/level22.split".Length..];
                     int index = int.Parse(suffix);
                     level22Parts.Add((index, ExtractEntryToMemory(entry)));
+                }
+
+                if (entry.FullName.StartsWith("assets/aa/Android/"))
+                {
+                    string bundleName = entry.FullName["assets/aa/Android/".Length..];
+                    bundleCache[bundleName] = ExtractEntryToMemory(entry);
                 }
             }
         }
@@ -102,6 +144,8 @@ class Program
         if (ggm == null || level0 == null || il2cppBytes == null || metadataBytes == null || level22Parts.Count == 0)
             throw new FileNotFoundException("Required Unity assets not found in APK");
 
+        if (catalogJson == null)
+            throw new FileNotFoundException("Catalog not found in APK");
 
         level22Parts.Sort((a, b) => a.index.CompareTo(b.index));
 
@@ -117,7 +161,9 @@ class Program
             level0 = level0,
             il2cppBytes = il2cppBytes,
             metadataBytes = metadataBytes,
-            level22 = level22
+            level22 = level22,
+            catalogJson = catalogJson,
+            bundleCache = bundleCache
         };
 
         return files;
