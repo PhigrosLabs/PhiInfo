@@ -13,13 +13,8 @@ using PhiInfo.Core.Type;
 
 namespace PhiInfo.CLI;
 
-// =====================
-// Metadata structures
-// =====================
-
 public struct ImageMetadata
 {
-#pragma warning disable IDE1006 // 命名样式
     public int width { get; set; }
     public int height { get; set; }
     public int file_id { get; set; }
@@ -40,8 +35,6 @@ public struct SongAssetMetadata
 {
     public Dictionary<string, TextMetadata> charts { get; set; }
     public ImageMetadata illustration { get; set; }
-    public ImageMetadata illustration_low_res { get; set; }
-    public ImageMetadata illustration_blur { get; set; }
     public MusicMetadata music { get; set; }
 }
 
@@ -52,51 +45,39 @@ public struct AllAssetsMetadata
     public Dictionary<string, ImageMetadata> avatars { get; set; }
     public Dictionary<string, ImageMetadata> chapter_covers { get; set; }
 }
-#pragma warning restore IDE1006 // 命名样式
 
-// =====================
-// TarPacker (thread-safe)
-// =====================
-
-public class TarPacker
+public sealed class TarPacker
 {
     private int _fileIdCounter = -1;
 
-    private readonly ConcurrentDictionary<int, (byte[] data, string name)> _files = new();
+    private readonly ConcurrentDictionary<int, (byte[] Data, string Name)> _files = new();
     private readonly ConcurrentDictionary<string, int> _pathToFileId = new();
-    private readonly ConcurrentDictionary<string, (int width, int height)> _imageDimensions = new();
+    private readonly ConcurrentDictionary<string, (int Width, int Height)> _imageDimensions = new();
+    private readonly ConcurrentDictionary<string, float> _musicLengths = new();
 
-    private int AllocateFileId()
-        => Interlocked.Increment(ref _fileIdCounter);
-
-    private void AddBinaryFile(int fileId, byte[] data)
-    {
-        _files[fileId] = (data, "files/" + fileId);
-    }
-
-    private void AddTextFile(int fileId, string text)
-    {
-        _files[fileId] = (Encoding.UTF8.GetBytes(text), "files/" + fileId);
-    }
+    private int AllocateFileId() => Interlocked.Increment(ref _fileIdCounter);
 
     private (int fileId, int width, int height) AddImageFile(string path, PhiInfoAsset asset)
     {
-        if (path == "Assets/Tracks/#ChapterCover/MainStory8.jpg") {
+        if (path == "Assets/Tracks/#ChapterCover/MainStory8.jpg")
+        {
             path = "Assets/Tracks/#ChapterCover/MainStory8_2.jpg";
         }
-        int fileId = _pathToFileId.GetOrAdd(path, _ =>
+
+        if (_pathToFileId.TryGetValue(path, out int existingId))
         {
-            int id = AllocateFileId();
-            var image = asset.GetImageRaw(path);
+            var dims = _imageDimensions[path];
+            return (existingId, dims.Width, dims.Height);
+        }
 
-            AddBinaryFile(id, image.data);
-            _imageDimensions[path] = (image.width, image.height);
+        int id = AllocateFileId();
+        var image = asset.GetImageRaw(path);
+        
+        _imageDimensions.TryAdd(path, (image.width, image.height));
+        _files.TryAdd(id, (image.data, $"files/{id}"));
+        _pathToFileId.TryAdd(path, id);
 
-            return id;
-        });
-
-        var dims = _imageDimensions[path];
-        return (fileId, dims.width, dims.height);
+        return (id, image.width, image.height);
     }
 
     private int AddTextFileFromPath(string path, PhiInfoAsset asset)
@@ -105,28 +86,27 @@ public class TarPacker
         {
             int id = AllocateFileId();
             var text = asset.GetText(path);
-            AddTextFile(id, text.content);
+            _files.TryAdd(id, (Encoding.UTF8.GetBytes(text.content), $"files/{id}"));
             return id;
         });
     }
 
     private (int fileId, float length) AddMusicFile(string path, PhiInfoAsset asset)
     {
-        int fileId = _pathToFileId.GetOrAdd(path, _ =>
+        if (_pathToFileId.TryGetValue(path, out int existingId))
         {
-            int id = AllocateFileId();
-            var music = asset.GetMusicRaw(path);
-            AddBinaryFile(id, music.data);
-            return id;
-        });
+            return (existingId, _musicLengths[path]);
+        }
 
-        var musicData = asset.GetMusicRaw(path);
-        return (fileId, musicData.length);
+        int id = AllocateFileId();
+        var music = asset.GetMusicRaw(path);
+        
+        _musicLengths.TryAdd(path, music.length);
+        _files.TryAdd(id, (music.data, $"files/{id}"));
+        _pathToFileId.TryAdd(path, id);
+
+        return (id, music.length);
     }
-
-    // =====================
-    // Parallel metadata build
-    // =====================
 
     public AllAssetsMetadata ConvertToMetadata(AllAssetsPaths assetPaths, PhiInfoAsset asset)
     {
@@ -135,46 +115,30 @@ public class TarPacker
         var avatars = new ConcurrentDictionary<string, ImageMetadata>();
         var chapterCovers = new ConcurrentDictionary<string, ImageMetadata>();
 
-        Parallel.ForEach(assetPaths.songs, songKvp =>
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+
+        Parallel.ForEach(assetPaths.songs, parallelOptions, songKvp =>
         {
             try
             {
                 var songPath = songKvp.Value;
-                var charts = new ConcurrentDictionary<string, TextMetadata>();
+                var charts = new Dictionary<string, TextMetadata>();
 
-                Parallel.ForEach(songPath.charts, chartKvp =>
+                foreach (var chartKvp in songPath.charts)
                 {
-                    try
-                    {
-                        int fileId = AddTextFileFromPath(chartKvp.Value, asset);
-                        charts[chartKvp.Key] = new TextMetadata { file_id = fileId };
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error processing chart {chartKvp.Value}: {ex.Message}");
-                    }
-                });
-
-                try
-                {
-                    var ill = AddImageFile(songPath.illustration, asset);
-                    var low = AddImageFile(songPath.illustration_low_res, asset);
-                    var blur = AddImageFile(songPath.illustration_blur, asset);
-                    var music = AddMusicFile(songPath.music, asset);
-
-                    songs[songKvp.Key] = new SongAssetMetadata
-                    {
-                        charts = new Dictionary<string, TextMetadata>(charts),
-                        illustration = new ImageMetadata { width = ill.width, height = ill.height, file_id = ill.fileId },
-                        illustration_low_res = new ImageMetadata { width = low.width, height = low.height, file_id = low.fileId },
-                        illustration_blur = new ImageMetadata { width = blur.width, height = blur.height, file_id = blur.fileId },
-                        music = new MusicMetadata { length = music.length, file_id = music.fileId }
-                    };
+                    int fileId = AddTextFileFromPath(chartKvp.Value, asset);
+                    charts[chartKvp.Key] = new TextMetadata { file_id = fileId };
                 }
-                catch (Exception ex)
+
+                var ill = AddImageFile(songPath.illustration, asset);
+                var music = AddMusicFile(songPath.music, asset);
+
+                songs[songKvp.Key] = new SongAssetMetadata
                 {
-                    Console.WriteLine($"Error processing song {songKvp.Key}: {ex.Message}");
-                }
+                    charts = charts,
+                    illustration = new ImageMetadata { width = ill.width, height = ill.height, file_id = ill.fileId },
+                    music = new MusicMetadata { length = music.length, file_id = music.fileId }
+                };
             }
             catch (Exception ex)
             {
@@ -182,58 +146,34 @@ public class TarPacker
             }
         });
 
-        Parallel.ForEach(assetPaths.collection_covers, kvp =>
+        Parallel.ForEach(assetPaths.collection_covers, parallelOptions, kvp =>
         {
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                covers[kvp.Key] = new ImageMetadata
-                {
-                    width = img.width,
-                    height = img.height,
-                    file_id = img.fileId
-                };
+                covers[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing collection cover {kvp.Value}: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });
 
-        Parallel.ForEach(assetPaths.avatars, kvp =>
+        Parallel.ForEach(assetPaths.avatars, parallelOptions, kvp =>
         {
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                avatars[kvp.Key] = new ImageMetadata
-                {
-                    width = img.width,
-                    height = img.height,
-                    file_id = img.fileId
-                };
+                avatars[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing avatar {kvp.Value}: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });
 
-        Parallel.ForEach(assetPaths.chapter_covers, kvp =>
+        Parallel.ForEach(assetPaths.chapter_covers, parallelOptions, kvp =>
         {
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                chapterCovers[kvp.Key] = new ImageMetadata
-                {
-                    width = img.width,
-                    height = img.height,
-                    file_id = img.fileId
-                };
+                chapterCovers[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing chapter cover {kvp.Value}: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });
 
         return new AllAssetsMetadata
@@ -245,29 +185,26 @@ public class TarPacker
         };
     }
 
-    // =====================
-    // Tar packing (single-thread)
-    // =====================
-
     public void PackToTar(string outputPath, AllAssetsMetadata metadata, JsonSerializerContext context)
     {
-        using var fileStream = File.Create(outputPath);
+        using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.SequentialScan);
         using var tarWriter = new TarWriter(fileStream);
 
-        var metadataJson = JsonSerializer.Serialize(metadata, typeof(AllAssetsMetadata), context);
-        var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
-
-        tarWriter.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, "metadata.json")
+        byte[] metadataBytes = JsonSerializer.SerializeToUtf8Bytes(metadata, typeof(AllAssetsMetadata), context);
+        
+        var metaEntry = new PaxTarEntry(TarEntryType.RegularFile, "metadata.json")
         {
             DataStream = new MemoryStream(metadataBytes)
-        });
+        };
+        tarWriter.WriteEntry(metaEntry);
 
         foreach (var kvp in _files)
         {
-            tarWriter.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, kvp.Value.name)
+            var entry = new PaxTarEntry(TarEntryType.RegularFile, kvp.Value.Name)
             {
-                DataStream = new MemoryStream(kvp.Value.data)
-            });
+                DataStream = new MemoryStream(kvp.Value.Data)
+            };
+            tarWriter.WriteEntry(entry);
         }
     }
 }
