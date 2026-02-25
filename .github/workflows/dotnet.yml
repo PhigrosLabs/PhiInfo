@@ -28,10 +28,10 @@ jobs:
       run: dotnet restore
 
     - name: Build PhiInfo.CLI
-      run: dotnet build src\PhiInfo.CLI\PhiInfo.CLI.csproj --configuration Release --no-restore
+      run: dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore
 
     - name: Publish PhiInfo.CLI Android AOT
-      run: dotnet publish src\PhiInfo.CLI\PhiInfo.CLI.csproj --configuration Release --no-restore -r linux-bionic-arm64
+      run: dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore -r linux-bionic-arm64
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v6
