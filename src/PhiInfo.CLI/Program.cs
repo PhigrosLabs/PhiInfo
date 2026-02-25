@@ -77,12 +77,14 @@ class Program
             {
                 Func<string, Stream> getBundleStreamFunc = (bundleName) =>
                 {
-                    var entry = zip.GetEntry("assets/aa/Android/" + bundleName);
-                    if (entry != null)
-                    {
-                        return ExtractEntryToMemoryStream(entry);
+                    lock (zip) {
+                        var entry = zip.GetEntry("assets/aa/Android/" + bundleName);
+                        if (entry != null)
+                        {
+                            return ExtractEntryToMemoryStream(entry);
+                        }
+                        throw new FileNotFoundException($"Bundle not found in APK: {bundleName}");
                     }
-                    throw new FileNotFoundException($"Bundle not found in APK: {bundleName}");
                 };
 
                 using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
