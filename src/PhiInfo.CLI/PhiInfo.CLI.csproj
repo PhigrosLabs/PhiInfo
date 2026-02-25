@@ -14,6 +14,7 @@
     <TrimMode>full</TrimMode>
     <PublishAot>true</PublishAot>
     <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <RuntimeIdentifiers>linux-bionic-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <Import Project="PhiInfo.CLI.targets" />
