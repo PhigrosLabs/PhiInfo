@@ -35,6 +35,7 @@ public struct SongAssetMetadata
 {
     public Dictionary<string, TextMetadata> charts { get; set; }
     public ImageMetadata illustration { get; set; }
+    public ImageMetadata illustration_low_res { get; set; }
     public MusicMetadata music { get; set; }
 }
 
@@ -55,7 +56,9 @@ public sealed class TarPacker
     private readonly ConcurrentDictionary<string, (int Width, int Height)> _imageDimensions = new();
     private readonly ConcurrentDictionary<string, float> _musicLengths = new();
 
-    private int AllocateFileId() => Interlocked.Increment(ref _fileIdCounter);
+    private int AllocateFileId() {
+        return Interlocked.Increment(ref _fileIdCounter);
+    }
 
     private (int fileId, int width, int height) AddImageFile(string path, PhiInfoAsset asset)
     {
@@ -72,7 +75,7 @@ public sealed class TarPacker
 
         int id = AllocateFileId();
         var image = asset.GetImageRaw(path);
-        
+
         _imageDimensions.TryAdd(path, (image.width, image.height));
         _files.TryAdd(id, (image.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
@@ -100,7 +103,7 @@ public sealed class TarPacker
 
         int id = AllocateFileId();
         var music = asset.GetMusicRaw(path);
-        
+
         _musicLengths.TryAdd(path, music.length);
         _files.TryAdd(id, (music.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
@@ -131,12 +134,14 @@ public sealed class TarPacker
                 }
 
                 var ill = AddImageFile(songPath.illustration, asset);
+                var illLowRes = AddImageFile(songPath.illustration_low_res, asset);
                 var music = AddMusicFile(songPath.music, asset);
 
                 songs[songKvp.Key] = new SongAssetMetadata
                 {
                     charts = charts,
                     illustration = new ImageMetadata { width = ill.width, height = ill.height, file_id = ill.fileId },
+                    illustration_low_res = new ImageMetadata { width = illLowRes.width, height = illLowRes.height, file_id = illLowRes.fileId },
                     music = new MusicMetadata { length = music.length, file_id = music.fileId }
                 };
             }
@@ -191,7 +196,7 @@ public sealed class TarPacker
         using var tarWriter = new TarWriter(fileStream);
 
         byte[] metadataBytes = JsonSerializer.SerializeToUtf8Bytes(metadata, typeof(AllAssetsMetadata), context);
-        
+
         var metaEntry = new PaxTarEntry(TarEntryType.RegularFile, "metadata.json")
         {
             DataStream = new MemoryStream(metadataBytes)

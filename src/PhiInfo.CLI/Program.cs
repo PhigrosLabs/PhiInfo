@@ -25,7 +25,6 @@ struct Files
     public byte[] metadataBytes;
     public Stream level22;
     public Stream catalogJson;
-    public Dictionary<string, byte[]> bundleCache;
 }
 
 class Program
@@ -33,14 +32,15 @@ class Program
     static readonly string dir = "./output/";
     static void Main(string[] args)
     {
-        if (args.Length != 2)
+        if (args.Length != 3)
         {
-            Console.WriteLine("Usage: <apk_path> <format_switch>");
+            Console.WriteLine("Usage: <apk_path> <format_switch> <asset_switch>");
             return;
         }
 
-        var files = SetupFiles(args[0]);
+        var apkPath = args[0];
         var formatSwitch = args[1] == "true" || args[1] == "1";
+        var assetSwitch = args[2] == "true" || args[2] == "1";
 
         var options = new JsonSerializerOptions
         {
@@ -50,49 +50,64 @@ class Program
 
         var context = new JsonContext(options);
 
-        var phiInfo = new PhiInfo(
-            files.ggm,
-            files.level0,
-            files.level22,
-            files.il2cppBytes,
-            files.metadataBytes,
-            File.OpenRead("classdata.tpk")
-        );
-
-        files.catalogJson.Position = 0;
-        var catalogParser = new CatalogParser(files.catalogJson);
-
-        Func<string, Stream> getBundleStreamFunc = (bundleName) =>
+        using (var apkFs = File.OpenRead(apkPath))
+        using (var zip = new ZipArchive(apkFs, ZipArchiveMode.Read))
         {
-            if (files.bundleCache.TryGetValue(bundleName, out var bundleData))
-            {
-                return new MemoryStream(bundleData);
-            }
-            throw new FileNotFoundException($"Bundle not found in cache: {bundleName}");
-        };
+            var files = SetupFiles(zip);
 
-        using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
-        {
-            var assetPaths = asset.ExtractAllAssetsPaths();
+            var phiInfo = new PhiInfo(
+                files.ggm,
+                files.level0,
+                files.level22,
+                files.il2cppBytes,
+                files.metadataBytes,
+                File.OpenRead("classdata.tpk")
+            );
+
+            files.catalogJson.Position = 0;
+            var catalogParser = new CatalogParser(files.catalogJson);
 
             Directory.CreateDirectory(dir);
-
-            var tarPacker = new TarPacker();
-            var metadata = tarPacker.ConvertToMetadata(assetPaths, asset);
-            tarPacker.PackToTar(dir + "assets.tar", metadata, context);
 
             var allInfo = phiInfo.ExtractAll();
             var allInfoJson = JsonSerializer.Serialize(allInfo, context.AllInfo);
             File.WriteAllText(dir + "all_info.json", allInfoJson);
 
-            Console.WriteLine("资源提取完成!");
-            Console.WriteLine($"歌曲数: {assetPaths.songs.Count}");
-            Console.WriteLine($"收藏集: {assetPaths.collection_covers.Count}");
-            Console.WriteLine($"头像数: {assetPaths.avatars.Count}");
+            if (assetSwitch)
+            {
+                Func<string, Stream> getBundleStreamFunc = (bundleName) =>
+                {
+                    var entry = zip.GetEntry("assets/aa/Android/" + bundleName);
+                    if (entry != null)
+                    {
+                        return ExtractEntryToMemoryStream(entry);
+                    }
+                    throw new FileNotFoundException($"Bundle not found in APK: {bundleName}");
+                };
+
+                using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
+                {
+                    var assetPaths = asset.ExtractAllAssetsPaths();
+
+                    var tarPacker = new TarPacker();
+                    var metadata = tarPacker.ConvertToMetadata(assetPaths, asset);
+                    tarPacker.PackToTar(dir + "assets.tar", metadata, context);
+
+                    Console.WriteLine("资源提取完成!");
+                    Console.WriteLine($"歌曲数: {assetPaths.songs.Count}");
+                    Console.WriteLine($"收藏集: {assetPaths.collection_covers.Count}");
+                    Console.WriteLine($"头像数: {assetPaths.avatars.Count}");
+                }
+            }
+            else
+            {
+                phiInfo.Dispose();
+                Console.WriteLine("已跳过资源提取");
+            }
         }
     }
 
-    static Files SetupFiles(string apkPath)
+    static Files SetupFiles(ZipArchive zip)
     {
         Stream? ggm = null;
         Stream? level0 = null;
@@ -100,44 +115,33 @@ class Program
         byte[]? metadataBytes = null;
         Stream? catalogJson = null;
         List<(int index, byte[] data)> level22Parts = new List<(int, byte[])>();
-        var bundleCache = new Dictionary<string, byte[]>();
 
-        using (var apkFs = File.OpenRead(apkPath))
-        using (var zip = new ZipArchive(apkFs, ZipArchiveMode.Read))
+        foreach (var entry in zip.Entries)
         {
-            foreach (var entry in zip.Entries)
+            switch (entry.FullName)
             {
-                switch (entry.FullName)
-                {
-                    case "assets/bin/Data/globalgamemanagers.assets":
-                        ggm = ExtractEntryToMemoryStream(entry);
-                        break;
-                    case "assets/bin/Data/level0":
-                        level0 = ExtractEntryToMemoryStream(entry);
-                        break;
-                    case "lib/arm64-v8a/libil2cpp.so":
-                        il2cppBytes = ExtractEntryToMemory(entry);
-                        break;
-                    case "assets/bin/Data/Managed/Metadata/global-metadata.dat":
-                        metadataBytes = ExtractEntryToMemory(entry);
-                        break;
-                    case "assets/aa/catalog.json":
-                        catalogJson = ExtractEntryToMemoryStream(entry);
-                        break;
-                }
+                case "assets/bin/Data/globalgamemanagers.assets":
+                    ggm = ExtractEntryToMemoryStream(entry);
+                    break;
+                case "assets/bin/Data/level0":
+                    level0 = ExtractEntryToMemoryStream(entry);
+                    break;
+                case "lib/arm64-v8a/libil2cpp.so":
+                    il2cppBytes = ExtractEntryToMemory(entry);
+                    break;
+                case "assets/bin/Data/Managed/Metadata/global-metadata.dat":
+                    metadataBytes = ExtractEntryToMemory(entry);
+                    break;
+                case "assets/aa/catalog.json":
+                    catalogJson = ExtractEntryToMemoryStream(entry);
+                    break;
+            }
 
-                if (entry.FullName.StartsWith("assets/bin/Data/level22.split"))
-                {
-                    string suffix = entry.FullName["assets/bin/Data/level22.split".Length..];
-                    int index = int.Parse(suffix);
-                    level22Parts.Add((index, ExtractEntryToMemory(entry)));
-                }
-
-                if (entry.FullName.StartsWith("assets/aa/Android/"))
-                {
-                    string bundleName = entry.FullName["assets/aa/Android/".Length..];
-                    bundleCache[bundleName] = ExtractEntryToMemory(entry);
-                }
+            if (entry.FullName.StartsWith("assets/bin/Data/level22.split"))
+            {
+                string suffix = entry.FullName["assets/bin/Data/level22.split".Length..];
+                int index = int.Parse(suffix);
+                level22Parts.Add((index, ExtractEntryToMemory(entry)));
             }
         }
 
@@ -162,8 +166,7 @@ class Program
             il2cppBytes = il2cppBytes,
             metadataBytes = metadataBytes,
             level22 = level22,
-            catalogJson = catalogJson,
-            bundleCache = bundleCache
+            catalogJson = catalogJson
         };
 
         return files;
@@ -179,7 +182,7 @@ class Program
         }
     }
 
-    static Stream ExtractEntryToMemoryStream(ZipArchiveEntry entry)
+    static MemoryStream ExtractEntryToMemoryStream(ZipArchiveEntry entry)
     {
         var ms = new MemoryStream();
         using (var entryStream = entry.Open())

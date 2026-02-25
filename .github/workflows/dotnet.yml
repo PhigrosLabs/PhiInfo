@@ -17,14 +17,30 @@ jobs:
       with:
         dotnet-version: "10.0"
 
+    - uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r27d
+        add-to-path: true
+        local-cache: true
+
     - name: Restore
       run: dotnet restore
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
+    - name: Build PhiInfo.CLI
+      run: dotnet build src\PhiInfo.CLI\PhiInfo.CLI.csproj --configuration Release --no-restore
+
+    - name: Publish PhiInfo.CLI Android AOT
+      run: dotnet publish src\PhiInfo.CLI\PhiInfo.CLI.csproj --configuration Release --no-restore -r linux-bionic-arm64
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v6
       with:
         name: PhiInfo.CLI
         path: ./src/PhiInfo.CLI/bin/Release/net10.0/**
+
+    - name: Upload Android artifacts
+      uses: actions/upload-artifact@v6
+      with:
+        name: PhiInfo.CLI-Android
+        path: ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/**
