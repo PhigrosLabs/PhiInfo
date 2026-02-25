@@ -24,8 +24,8 @@ jobs:
         add-to-path: true
         local-cache: true
 
-    - name: Restore
-      run: dotnet restore
+    - name: Restore PhiInfo.CLI
+      run: dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj -r linux-bionic-arm64
 
     - name: Build PhiInfo.CLI
       run: dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore
