@@ -15,8 +15,8 @@ namespace PhiInfo.CLI;
 
 public struct ImageMetadata
 {
-    public int width { get; set; }
-    public int height { get; set; }
+    public uint width { get; set; }
+    public uint height { get; set; }
     public int file_id { get; set; }
 }
 
@@ -53,14 +53,14 @@ public sealed class TarPacker
 
     private readonly ConcurrentDictionary<int, (byte[] Data, string Name)> _files = new();
     private readonly ConcurrentDictionary<string, int> _pathToFileId = new();
-    private readonly ConcurrentDictionary<string, (int Width, int Height)> _imageDimensions = new();
+    private readonly ConcurrentDictionary<string, (uint Width, uint Height)> _imageDimensions = new();
     private readonly ConcurrentDictionary<string, float> _musicLengths = new();
 
     private int AllocateFileId() {
         return Interlocked.Increment(ref _fileIdCounter);
     }
 
-    private (int fileId, int width, int height) AddImageFile(string path, PhiInfoAsset asset)
+    private (int fileId, uint width, uint height) AddImageFile(string path, PhiInfoAsset asset)
     {
         if (path == "Assets/Tracks/#ChapterCover/MainStory8.jpg")
         {

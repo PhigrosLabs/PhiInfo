@@ -88,6 +88,27 @@ namespace PhiInfo.Core
             return template.MakeValue(file.Reader, offset, refMan);
         }
 
+        static internal AssetTypeValueField GetBaseField(AssetsFile file, AssetFileInfo info)
+        {
+            long offset = info.GetAbsoluteByteOffset(file);
+
+            if (file.Metadata.TypeTreeEnabled)
+            {
+                var tt = file.Metadata.FindTypeTreeTypeByID(info.TypeId, info.GetScriptIndex(file));
+                if (tt != null && tt.Nodes.Count > 0)
+                {
+                    var template = new AssetTypeTemplateField();
+                    template.FromTypeTree(tt);
+
+                    RefTypeManager refMan = new();
+                    refMan.FromTypeTree(file.Metadata);
+
+                    return template.MakeValue(file.Reader, offset, refMan);
+                }
+            }
+            throw new Exception($"Failed to build template for type {info.TypeId}");
+        }
+
         private AssetTypeTemplateField? GetTemplateBaseField(
             AssetsFile file,
             AssetFileInfo info,

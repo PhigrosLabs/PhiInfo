@@ -1,30 +1,17 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using PhiInfo.Core.Type;
 
 namespace PhiInfo.Core;
 
-public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<string, Stream> getBundleStreamFunc) : IDisposable
+public class PhiInfoAsset(CatalogParser catalogParser, Func<string, Stream> getBundleStreamFunc)
 {
-    private bool _disposed = false;
-
     private readonly CatalogParser _catalogParser = catalogParser;
 
     private readonly Func<string, Stream> _getBundleStreamFunc = getBundleStreamFunc;
-
-    public readonly PhiInfo phiInfo = phiInfo;
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        phiInfo.Dispose();
-    }
 
     static byte[] ReadRangeAsBytes(Stream baseStream, long offset, int size)
     {
@@ -93,9 +80,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
             {
                 if (info.TypeId == (int)AssetClassID.Texture2D)
                 {
-                    var baseField = phiInfo.GetBaseField(info_file, info, false);
-                    var height = baseField["m_Height"].AsInt;
-                    var width = baseField["m_Width"].AsInt;
+                    var baseField = PhiInfo.GetBaseField(info_file, info);
+                    var height = baseField["m_Height"].AsUInt;
+                    var width = baseField["m_Width"].AsUInt;
                     var data_offset = baseField["m_StreamData"]["offset"].AsLong;
                     var data_size = baseField["m_StreamData"]["size"].AsLong;
                     bun.GetFileRange(1, out long data_file_offset, out long data_file_size);
@@ -116,7 +103,7 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
             {
                 if (info.TypeId == (int)AssetClassID.AudioClip)
                 {
-                    var baseField = phiInfo.GetBaseField(info_file, info, false);
+                    var baseField = PhiInfo.GetBaseField(info_file, info);
                     var data_offset = baseField["m_Resource"]["m_Offset"].AsLong;
                     var data_size = baseField["m_Resource"]["m_Size"].AsLong;
                     var length = baseField["m_Length"].AsFloat;
@@ -137,7 +124,7 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
             {
                 if (info.TypeId == (int)AssetClassID.TextAsset)
                 {
-                    var baseField = phiInfo.GetBaseField(info_file, info, false);
+                    var baseField = PhiInfo.GetBaseField(info_file, info);
                     var text = baseField["m_Script"].AsString;
                     return new Text { content = text };
                 }
@@ -159,12 +146,11 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return _getBundleStreamFunc(bundlePath.Value.ResolvedKey.Value.StringValue);
     }
 
-    public Dictionary<string, SongAssetPath> ExtractSongAssetPaths()
+    public Dictionary<string, SongAssetPath> ExtractSongAssetPaths(List<SongInfo> songInfo)
     {
         var result = new Dictionary<string, SongAssetPath>();
-        var song_info = phiInfo.ExtractSongInfo();
 
-        foreach (var song in song_info)
+        foreach (var song in songInfo)
         {
             var path = "Assets/Tracks/" + song.id;
             var charts = new Dictionary<string, string>();
@@ -187,10 +173,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return result;
     }
 
-    public Dictionary<string, string> ExtractCollectionCoverPaths()
+    public Dictionary<string, string> ExtractCollectionCoverPaths(List<Folder> collection)
     {
         var result = new Dictionary<string, string>();
-        var collection = phiInfo.ExtractCollection();
 
         foreach (var folder in collection)
         {
@@ -200,10 +185,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return result;
     }
 
-    public Dictionary<string, string> ExtractAvatarPaths()
+    public Dictionary<string, string> ExtractAvatarPaths(List<Avatar> avatars)
     {
         var result = new Dictionary<string, string>();
-        var avatars = phiInfo.ExtractAvatars();
 
         foreach (var avatar in avatars)
         {
@@ -213,10 +197,9 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return result;
     }
 
-    public Dictionary<string, string> ExtractChapterCoverPaths()
+    public Dictionary<string, string> ExtractChapterCoverPaths(List<ChapterInfo> chapters)
     {
         var result = new Dictionary<string, string>();
-        var chapters = phiInfo.ExtractChapters();
 
         foreach (var chapter in chapters)
         {
@@ -226,14 +209,14 @@ public class PhiInfoAsset(PhiInfo phiInfo, CatalogParser catalogParser, Func<str
         return result;
     }
 
-    public AllAssetsPaths ExtractAllAssetsPaths()
+    public AllAssetsPaths ExtractAllAssetsPaths(AllInfo allInfo)
     {
         return new AllAssetsPaths
         {
-            songs = ExtractSongAssetPaths(),
-            collection_covers = ExtractCollectionCoverPaths(),
-            avatars = ExtractAvatarPaths(),
-            chapter_covers = ExtractChapterCoverPaths()
+            songs = ExtractSongAssetPaths(allInfo.songs),
+            collection_covers = ExtractCollectionCoverPaths(allInfo.collection),
+            avatars = ExtractAvatarPaths(allInfo.avatars),
+            chapter_covers = ExtractChapterCoverPaths(allInfo.chapters)
         };
     }
 }

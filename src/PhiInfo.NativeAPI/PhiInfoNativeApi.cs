@@ -31,6 +31,7 @@ public static class PhiInfoNativeApi
         WriteIndented = false
     });
 
+    [ThreadStatic]
     private static LastError? _lastError;
     private static PhiInfo? _phi;
 

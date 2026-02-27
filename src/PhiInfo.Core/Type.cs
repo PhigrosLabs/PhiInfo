@@ -1,6 +1,7 @@
 #pragma warning disable IDE1006
 #pragma warning disable IDE0130
 
+using System;
 using System.Collections.Generic;
 
 namespace PhiInfo.Core.Type
@@ -67,9 +68,19 @@ namespace PhiInfo.Core.Type
 
     public struct Image
     {
-        public int width { get; set; }
-        public int height { get; set; }
+        public uint width { get; set; }
+        public uint height { get; set; }
         public byte[] data { get; set; }
+
+        public readonly byte[] WithHeader()
+        {
+            var result = new byte[1 + 4 + 4 + data.Length];
+            result[0] = 72;
+            BitConverter.GetBytes(width).CopyTo(result, 1);
+            BitConverter.GetBytes(height).CopyTo(result, 5);
+            data.CopyTo(result, 9);
+            return result;
+        }
     }
 
     public struct Music

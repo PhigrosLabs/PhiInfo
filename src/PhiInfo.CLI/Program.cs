@@ -77,7 +77,8 @@ class Program
             {
                 Func<string, Stream> getBundleStreamFunc = (bundleName) =>
                 {
-                    lock (zip) {
+                    lock (zip)
+                    {
                         var entry = zip.GetEntry("assets/aa/Android/" + bundleName);
                         if (entry != null)
                         {
@@ -87,19 +88,17 @@ class Program
                     }
                 };
 
-                using (var asset = new PhiInfoAsset(phiInfo, catalogParser, getBundleStreamFunc))
-                {
-                    var assetPaths = asset.ExtractAllAssetsPaths();
+                var asset = new PhiInfoAsset(catalogParser, getBundleStreamFunc);
+                var assetPaths = asset.ExtractAllAssetsPaths(allInfo);
+                var tarPacker = new TarPacker();
+                var metadata = tarPacker.ConvertToMetadata(assetPaths, asset);
+                tarPacker.PackToTar(dir + "assets.tar", metadata, context);
 
-                    var tarPacker = new TarPacker();
-                    var metadata = tarPacker.ConvertToMetadata(assetPaths, asset);
-                    tarPacker.PackToTar(dir + "assets.tar", metadata, context);
-
-                    Console.WriteLine("资源提取完成!");
-                    Console.WriteLine($"歌曲数: {assetPaths.songs.Count}");
-                    Console.WriteLine($"收藏集: {assetPaths.collection_covers.Count}");
-                    Console.WriteLine($"头像数: {assetPaths.avatars.Count}");
-                }
+                Console.WriteLine("资源提取完成!");
+                Console.WriteLine($"歌曲数: {assetPaths.songs.Count}");
+                Console.WriteLine($"收藏集: {assetPaths.collection_covers.Count}");
+                Console.WriteLine($"头像数: {assetPaths.avatars.Count}");
+                phiInfo.Dispose();
             }
             else
             {
