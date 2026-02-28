@@ -45,7 +45,7 @@ jobs:
         path: ./src/PhiInfo.CLI/bin/Release/net10.0/**
 
     - name: Publish PhiInfo.CLI-Android
-      run: dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64 --no-restore
+      run: dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64
 
     - name: Upload PhiInfo.CLI-Android
       uses: actions/upload-artifact@v6
@@ -54,7 +54,7 @@ jobs:
         path: ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/**
 
     - name: Publish PhiInfo.Android
-      run: dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64 --no-restore
+      run: dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64
 
     - name: Upload PhiInfo.Android
       uses: actions/upload-artifact@v6
