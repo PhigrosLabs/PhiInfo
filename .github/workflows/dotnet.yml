@@ -1,5 +1,8 @@
 name: dotnet-ci
 
+permissions:
+  contents: read 
+
 on:
   push:
     branches: [ "main" ]
@@ -12,35 +15,51 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: "10.0"
-
-    - uses: nttld/setup-ndk@v1
-      id: setup-ndk
+    - name: Setup Android Ndk
+      uses: nttld/setup-ndk@v1
       with:
         ndk-version: r27d
         add-to-path: true
         local-cache: true
 
-    - name: Restore PhiInfo.CLI
-      run: dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj -r linux-bionic-arm64
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5.1.0
+      with:
+        dotnet-version: "10.0"
+        cache: true
+        cache-dependency-path: ./src/PhiInfo.Android/packages.lock.json
+
+    - name: Restore PhiInfo
+      run: | 
+        dotnet workload install android
+        dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj -r linux-bionic-arm64
+        dotnet restore ./src/PhiInfo.Android/PhiInfo.Android.csproj -r android-arm64
 
     - name: Build PhiInfo.CLI
       run: dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore
 
-    - name: Upload build artifacts
+    - name: Upload PhiInfo.CLI artifacts
       uses: actions/upload-artifact@v6
       with:
         name: PhiInfo.CLI
         path: ./src/PhiInfo.CLI/bin/Release/net10.0/**
 
-    - name: Publish PhiInfo.CLI Android AOT
-      run: dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64
+    - name: Publish PhiInfo.CLI-Android
+      run: dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64 --no-restore
 
-    - name: Upload Android artifacts
+    - name: Upload PhiInfo.CLI-Android
       uses: actions/upload-artifact@v6
       with:
         name: PhiInfo.CLI-Android
         path: ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/**
+
+    - name: Publish PhiInfo.Android
+      run: dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64 --no-restore
+
+    - name: Upload PhiInfo.Android
+      uses: actions/upload-artifact@v6
+      with:
+        name: PhiInfo.Android
+        path: ./src/PhiInfo.Android/bin/Release/net10.0-android/android-arm64/publish/dev.phigros_labs.PhiInfo-Signed.apk
+
+   

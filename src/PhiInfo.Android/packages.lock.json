@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-android36.0": {
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "0g8tazNW4q0anSYNl1hnaHGc7+BQXwpNBMx3d5T3JboOVzz4OXZgqbuoBYfn60VtDFtBMNVS2Kfopelpo2pLZA=="
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "sXdDtMf2qcnbygw9OdE535c2lxSxrZP8gO4UhDJ0xiJbl1wIqXS1OTcTDFTIJPOFd6Mhcm8gPEthqWGUxBsTqw=="
+      },
+      "AssetRipper.Primitives": {
+        "type": "Transitive",
+        "resolved": "3.1.3",
+        "contentHash": "djZbN/+EXmI+Oia9Pm0LyjZVCPLf60TPSL5rGb7mBEYM5F4CN3nPFXvl2yA5LanPZoHS1Yq7PghGUmkP7Pv9RQ=="
+      },
+      "AssetsTools.NET": {
+        "type": "Transitive",
+        "resolved": "3.0.4",
+        "contentHash": "NqYy5UIucwKwdkpamFTi8lr53hD+V8qQmbHzztQj1v4Pq1G4TjNlpkUWOhktTLBqBm4aPRaAkpFgB+3TDEuomw=="
+      },
+      "AssetsTools.NET.Cpp2IL": {
+        "type": "Transitive",
+        "resolved": "3.0.4",
+        "contentHash": "G2AU/nOSqHnDWRVa8WqAb9Pt8PaG5aJIdGgkTCgZ1iNoVvseOIqFHowMJYwWrYTT5gQ79Dqd4Ta7fx6cILDObw==",
+        "dependencies": {
+          "AssetsTools.NET": "3.0.0",
+          "Samboy063.LibCpp2IL": "2022.0.7.2"
+        }
+      },
+      "Samboy063.LibCpp2IL": {
+        "type": "Transitive",
+        "resolved": "2022.1.0-pre-release.19",
+        "contentHash": "/n8p81ltd38BeNNS2xUNPGMSzxk/UGXr9cRNqG1MaLogzANNNrvCAXqWmNMM3tZctjp7vqTxEA+e4J4ngul8Fg==",
+        "dependencies": {
+          "AssetRipper.Primitives": "3.1.3",
+          "Samboy063.WasmDisassembler": "2022.1.0-pre-release.19"
+        }
+      },
+      "Samboy063.WasmDisassembler": {
+        "type": "Transitive",
+        "resolved": "2022.1.0-pre-release.19",
+        "contentHash": "uVQdYm/J6+jJ1xt6GJ3hNhXhciwlX+LmHTPITu9jjZ75T33YJuuTD7pLVYuMymr+4gSVisg7f1wterFSyqJBWA=="
+      },
+      "phiinfo.core": {
+        "type": "Project",
+        "dependencies": {
+          "AssetsTools.NET": "[3.0.4, )",
+          "AssetsTools.NET.Cpp2IL": "[3.0.4, )",
+          "Samboy063.LibCpp2IL": "[2022.1.0-pre-release.19, )"
+        }
+      }
+    },
+    "net10.0-android36.0/android-arm64": {
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "0g8tazNW4q0anSYNl1hnaHGc7+BQXwpNBMx3d5T3JboOVzz4OXZgqbuoBYfn60VtDFtBMNVS2Kfopelpo2pLZA==",
+        "dependencies": {
+          "runtime.linux-arm64.Microsoft.DotNet.ILCompiler": "10.0.2"
+        }
+      },
+      "runtime.linux-arm64.Microsoft.DotNet.ILCompiler": {
+        "type": "Transitive",
+        "resolved": "10.0.2",
+        "contentHash": "kmZPTEiuY0fvobk4fMoL8ylcjbrJB9Oj8NeEfvUprEzZlodupK5MumI04HYkEDDzTHWKbbx+IIZfpz6qmgs4FQ=="
+      }
+    }
+  }
+}
