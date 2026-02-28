@@ -83,11 +83,12 @@ public class PhiInfoAsset(CatalogParser catalogParser, Func<string, Stream> getB
                     var baseField = PhiInfo.GetBaseField(info_file, info);
                     var height = baseField["m_Height"].AsUInt;
                     var width = baseField["m_Width"].AsUInt;
+                    var format = baseField["m_TextureFormat"].AsUInt;
                     var data_offset = baseField["m_StreamData"]["offset"].AsLong;
                     var data_size = baseField["m_StreamData"]["size"].AsLong;
                     bun.GetFileRange(1, out long data_file_offset, out long data_file_size);
                     var data = ReadRangeAsBytes(bun.DataReader.BaseStream, data_file_offset + data_offset, (int)data_size);
-                    var image = new Image { width = width, height = height, data = data };
+                    var image = new Image { format = format, width = width, height = height, data = data };
                     return image;
                 }
             }

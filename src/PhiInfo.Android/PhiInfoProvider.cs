@@ -10,7 +10,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Uri = Android.Net.Uri;
 
 namespace PhiInfo.Android
@@ -110,16 +109,14 @@ namespace PhiInfo.Android
             }
         }
 
-        private static ParcelFileDescriptor SystemDataToPfd(byte[] data)
+        private ParcelFileDescriptor SystemDataToPfd(byte[] data)
         {
-            var memFile = new MemoryFile(null, data.Length);
-            memFile.WriteBytes(data, 0, 0, data.Length);
-
-            var getFdMethod = memFile.Class.GetDeclaredMethod("getFileDescriptor");
-            getFdMethod.Accessible = true;
-            var fd = (FileDescriptor)getFdMethod.Invoke(memFile);
-
-            return ParcelFileDescriptor.Dup(fd);
+            var file = new Java.IO.File(Context.CacheDir, Guid.NewGuid().ToString());
+            using (var fs = new FileOutputStream(file))
+            {
+                fs.Write(data);
+            }
+            return ParcelFileDescriptor.Open(file, ParcelFileMode.ReadOnly);
         }
 
         private byte[] HandleInfoRequest(string resourcePath)

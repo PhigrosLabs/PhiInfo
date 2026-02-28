@@ -15,6 +15,7 @@ namespace PhiInfo.CLI;
 
 public struct ImageMetadata
 {
+    public uint format { get; set; }
     public uint width { get; set; }
     public uint height { get; set; }
     public int file_id { get; set; }
@@ -53,14 +54,15 @@ public sealed class TarPacker
 
     private readonly ConcurrentDictionary<int, (byte[] Data, string Name)> _files = new();
     private readonly ConcurrentDictionary<string, int> _pathToFileId = new();
-    private readonly ConcurrentDictionary<string, (uint Width, uint Height)> _imageDimensions = new();
+    private readonly ConcurrentDictionary<string, (uint Width, uint Height, uint format)> _imageInfo = new();
     private readonly ConcurrentDictionary<string, float> _musicLengths = new();
 
-    private int AllocateFileId() {
+    private int AllocateFileId()
+    {
         return Interlocked.Increment(ref _fileIdCounter);
     }
 
-    private (int fileId, uint width, uint height) AddImageFile(string path, PhiInfoAsset asset)
+    private ImageMetadata AddImageFile(string path, PhiInfoAsset asset)
     {
         if (path == "Assets/Tracks/#ChapterCover/MainStory8.jpg")
         {
@@ -69,18 +71,18 @@ public sealed class TarPacker
 
         if (_pathToFileId.TryGetValue(path, out int existingId))
         {
-            var dims = _imageDimensions[path];
-            return (existingId, dims.Width, dims.Height);
+            var info = _imageInfo[path];
+            return new ImageMetadata {format=info.format,width=info.Width,height=info.Height,file_id=existingId};
         }
 
         int id = AllocateFileId();
         var image = asset.GetImageRaw(path);
 
-        _imageDimensions.TryAdd(path, (image.width, image.height));
+        _imageInfo.TryAdd(path, (image.width, image.height, image.format));
         _files.TryAdd(id, (image.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
 
-        return (id, image.width, image.height);
+        return new ImageMetadata {format=image.format,width=image.width,height=image.height,file_id=id};
     }
 
     private int AddTextFileFromPath(string path, PhiInfoAsset asset)
@@ -94,11 +96,11 @@ public sealed class TarPacker
         });
     }
 
-    private (int fileId, float length) AddMusicFile(string path, PhiInfoAsset asset)
+    private MusicMetadata AddMusicFile(string path, PhiInfoAsset asset)
     {
         if (_pathToFileId.TryGetValue(path, out int existingId))
         {
-            return (existingId, _musicLengths[path]);
+            return new MusicMetadata{file_id=existingId,length=_musicLengths[path]};
         }
 
         int id = AllocateFileId();
@@ -108,7 +110,7 @@ public sealed class TarPacker
         _files.TryAdd(id, (music.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
 
-        return (id, music.length);
+        return new MusicMetadata{file_id=id,length=music.length};
     }
 
     public AllAssetsMetadata ConvertToMetadata(AllAssetsPaths assetPaths, PhiInfoAsset asset)
@@ -140,9 +142,9 @@ public sealed class TarPacker
                 songs[songKvp.Key] = new SongAssetMetadata
                 {
                     charts = charts,
-                    illustration = new ImageMetadata { width = ill.width, height = ill.height, file_id = ill.fileId },
-                    illustration_low_res = new ImageMetadata { width = illLowRes.width, height = illLowRes.height, file_id = illLowRes.fileId },
-                    music = new MusicMetadata { length = music.length, file_id = music.fileId }
+                    illustration = ill,
+                    illustration_low_res = illLowRes,
+                    music = music
                 };
             }
             catch (Exception ex)
@@ -156,7 +158,7 @@ public sealed class TarPacker
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                covers[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
+                covers[kvp.Key] = img;
             }
             catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });
@@ -166,7 +168,7 @@ public sealed class TarPacker
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                avatars[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
+                avatars[kvp.Key] = img;
             }
             catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });
@@ -176,7 +178,7 @@ public sealed class TarPacker
             try
             {
                 var img = AddImageFile(kvp.Value, asset);
-                chapterCovers[kvp.Key] = new ImageMetadata { width = img.width, height = img.height, file_id = img.fileId };
+                chapterCovers[kvp.Key] = img;
             }
             catch (Exception ex) { Console.WriteLine($"Error: {kvp.Value} - {ex.Message}"); }
         });

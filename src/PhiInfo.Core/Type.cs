@@ -68,17 +68,19 @@ namespace PhiInfo.Core.Type
 
     public struct Image
     {
+        public uint format { get; set; }
         public uint width { get; set; }
         public uint height { get; set; }
         public byte[] data { get; set; }
 
         public readonly byte[] WithHeader()
         {
-            var result = new byte[1 + 4 + 4 + data.Length];
+            var result = new byte[1 + 4 + 4 + 4 + data.Length];
             result[0] = 72;
-            BitConverter.GetBytes(width).CopyTo(result, 1);
+            BitConverter.GetBytes(format).CopyTo(result, 1);
             BitConverter.GetBytes(height).CopyTo(result, 5);
-            data.CopyTo(result, 9);
+            BitConverter.GetBytes(width).CopyTo(result, 9);
+            data.CopyTo(result, 13);
             return result;
         }
     }
