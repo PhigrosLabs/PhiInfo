@@ -72,7 +72,7 @@ public sealed class TarPacker
         if (_pathToFileId.TryGetValue(path, out int existingId))
         {
             var info = _imageInfo[path];
-            return new ImageMetadata {format=info.format,width=info.Width,height=info.Height,file_id=existingId};
+            return new ImageMetadata { format = info.format, width = info.Width, height = info.Height, file_id = existingId };
         }
 
         int id = AllocateFileId();
@@ -82,7 +82,7 @@ public sealed class TarPacker
         _files.TryAdd(id, (image.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
 
-        return new ImageMetadata {format=image.format,width=image.width,height=image.height,file_id=id};
+        return new ImageMetadata { format = image.format, width = image.width, height = image.height, file_id = id };
     }
 
     private int AddTextFileFromPath(string path, PhiInfoAsset asset)
@@ -100,7 +100,7 @@ public sealed class TarPacker
     {
         if (_pathToFileId.TryGetValue(path, out int existingId))
         {
-            return new MusicMetadata{file_id=existingId,length=_musicLengths[path]};
+            return new MusicMetadata { file_id = existingId, length = _musicLengths[path] };
         }
 
         int id = AllocateFileId();
@@ -110,7 +110,7 @@ public sealed class TarPacker
         _files.TryAdd(id, (music.data, $"files/{id}"));
         _pathToFileId.TryAdd(path, id);
 
-        return new MusicMetadata{file_id=id,length=music.length};
+        return new MusicMetadata { file_id = id, length = music.length };
     }
 
     public AllAssetsMetadata ConvertToMetadata(AllAssetsPaths assetPaths, PhiInfoAsset asset)
