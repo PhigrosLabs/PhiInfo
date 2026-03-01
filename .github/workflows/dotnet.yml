@@ -37,8 +37,8 @@ jobs:
     - name: Restore PhiInfo
       run: | 
         dotnet workload install android
-        dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj -r linux-bionic-arm64
-        dotnet restore ./src/PhiInfo.Android/PhiInfo.Android.csproj -r android-arm64
+        dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj
+        dotnet restore ./src/PhiInfo.Android/PhiInfo.Android.csproj
 
     - name: Build PhiInfo.CLI
       run: | 

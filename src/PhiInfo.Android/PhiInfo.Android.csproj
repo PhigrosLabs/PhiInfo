@@ -15,15 +15,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <SupportedOSPlatformVersion>28</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>29</SupportedOSPlatformVersion>
     <ApplicationTitle>PhiInfo.Android</ApplicationTitle>
     <ApplicationId>dev.phigros_labs.PhiInfo</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <AndroidPermission Include="android.permission.QUERY_ALL_PACKAGES" />
-  </ItemGroup>
 </Project>
