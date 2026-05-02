@@ -1,4 +1,6 @@
-using System;
+#pragma warning disable IDE1006
+// ReSharper disable InconsistentNaming
+
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -17,36 +19,19 @@ namespace PhiInfo.Mcp.Tools;
 
 public sealed partial class PhiInfoTool
 {
-    [JsonConverter(typeof(JsonStringEnumConverter<FileItemField>))]
-    public enum FileItemField
+    [JsonConverter(typeof(JsonStringEnumConverter<FileItemCondition>))]
+    public enum FileItemCondition
     {
-        Key,
-        Name,
-        Date,
-        Supervisor,
-        Category,
-        Content,
-        Properties
+        folder_index,
+        key,
+        name,
+        date,
+        supervisor,
+        category,
+        content,
+        properties
     }
-    
-    public record McpFileItem(
-        string key,
-        int sub_index,
-        string name,
-        string date,
-        string supervisor,
-        string category,
-        string content,
-        string properties
-    );
 
-    public record McpCollectionFolder(
-        int index,
-        string title,
-        string sub_title,
-        string cover
-    );
-    
     [McpServerTool(UseStructuredContent = true, ReadOnly = true, OpenWorld = false)]
     [Description("Get the list of Phigros collection folders")]
     public static async Task<List<McpCollectionFolder>> PhiInfoGetCollectionFolders(
@@ -74,14 +59,13 @@ public sealed partial class PhiInfoTool
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = true, OpenWorld = false)]
-    [Description("Get files matching conditions from a specified Phigros collection folder")]
+    [Description("Get files matching conditions from Phigros collection")]
     public static async Task<List<McpFileItem>> PhiInfoGetCollectionFile(
         IPhiInfoRouter client,
-        [Description("Folder index")] int folderIndex,
         [Description("Language")] Language lang,
-        [Description("Filter conditions")]
-        Dictionary<FileItemField, string>? filters = null,
-        [Description("Maximum number of results")] int? limit = null)
+        [Description("Filter conditions")] List<FileFilter>? filters = null,
+        [Description("Maximum number of results")]
+        int? limit = null)
     {
         var resp = await client.HandleAsync("/info/collection.json");
         if (resp.code != 200)
@@ -90,12 +74,32 @@ public sealed partial class PhiInfoTool
                 Encoding.UTF8.GetString(resp.data ?? []));
 
         var folders = JsonSerializer.Deserialize(resp.data, JsonContext.Default.ListFolder);
-        if (folders is null || folderIndex < 0 || folderIndex >= folders.Count)
+        if (folders is null)
             return [];
 
-        var files = folders[folderIndex].files;
+        IEnumerable<FileItem> files;
 
-        IEnumerable<FileItem> query = files;
+        var folderIndexes = filters?
+            .Where(f => f.type == FileItemCondition.folder_index)
+            .Select(f => f.value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => int.TryParse(v, out var i) ? i : -1)
+            .Where(i => i >= 0 && i < folders.Count)
+            .ToHashSet();
+
+        if (folderIndexes == null || folderIndexes.Count == 0)
+            files = folders.SelectMany(f => f.files);
+        else
+            files = folders
+                .Where((_, idx) => folderIndexes.Contains(idx))
+                .SelectMany(f => f.files);
+
+        if (filters is not null)
+            filters = filters
+                .Where(f => f.type != FileItemCondition.folder_index)
+                .ToList();
+
+        var query = files;
 
         if (filters is not null && filters.Count > 0)
             query = query.Where(f => MatchesFilter(f, filters, lang));
@@ -109,13 +113,14 @@ public sealed partial class PhiInfoTool
     }
 
     [McpServerTool(UseStructuredContent = true, ReadOnly = true, OpenWorld = false)]
-    [Description("Get all distinct values of a field from a specified Phigros collection folder")]
+    [Description("Get all distinct values of a field from Phigros collection")]
     public static async Task<List<string>> PhiInfoGetCollectionFileConditions(
         IPhiInfoRouter client,
-        [Description("Collection folder index")] int folderIndex,
-        [Description("Field to query")] FileItemField field,
+        [Description("Field to query")] FileItemCondition condition,
         [Description("Language")] Language lang,
-        [Description("Maximum number of results")] int? limit = null)
+        [Description("Filter conditions")] List<FileFilter>? filters = null,
+        [Description("Maximum number of results")]
+        int? limit = null)
     {
         var resp = await client.HandleAsync("/info/collection.json");
         if (resp.code != 200)
@@ -124,11 +129,28 @@ public sealed partial class PhiInfoTool
                 Encoding.UTF8.GetString(resp.data ?? []));
 
         var folders = JsonSerializer.Deserialize(resp.data, JsonContext.Default.ListFolder);
-        if (folders is null || folderIndex < 0 || folderIndex >= folders.Count)
+        if (folders is null)
             return [];
 
-        var query = folders[folderIndex].files
-            .Select(f => GetFieldValue(f, field, lang))
+        IEnumerable<FileItem> files;
+
+        var folderIndexes = filters?
+            .Where(f => f.type == FileItemCondition.folder_index)
+            .Select(f => f.value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => int.TryParse(v, out var i) ? i : -1)
+            .Where(i => i >= 0 && i < folders.Count)
+            .ToHashSet();
+
+        if (folderIndexes == null || folderIndexes.Count == 0)
+            files = folders.SelectMany(f => f.files);
+        else
+            files = folders
+                .Where((_, idx) => folderIndexes.Contains(idx))
+                .SelectMany(f => f.files);
+
+        var query = files
+            .Select(f => GetFieldValue(f, condition, lang))
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .Distinct();
 
@@ -137,36 +159,37 @@ public sealed partial class PhiInfoTool
 
         return query.ToList();
     }
-    
+
     private static bool MatchesFilter(
         FileItem item,
-        Dictionary<FileItemField, string> filters,
+        List<FileFilter> filters,
         Language lang)
     {
-        foreach (var (field, value) in filters)
+        foreach (var filter in filters)
         {
-            var itemValue = GetFieldValue(item, field, lang);
+            var itemValue = GetFieldValue(item, filter.type, lang);
+
             if (string.IsNullOrWhiteSpace(itemValue))
                 return false;
 
-            if (!itemValue.Contains(value, StringComparison.OrdinalIgnoreCase))
+            if (!itemValue.FuzzyMatch(filter.value))
                 return false;
         }
 
         return true;
     }
 
-    private static string GetFieldValue(FileItem item, FileItemField field, Language lang)
+    private static string GetFieldValue(FileItem item, FileItemCondition condition, Language lang)
     {
-        return field switch
+        return condition switch
         {
-            FileItemField.Key => item.key,
-            FileItemField.Name => GetLang(item.name, lang),
-            FileItemField.Date => item.date,
-            FileItemField.Supervisor => GetLang(item.supervisor, lang),
-            FileItemField.Category => item.category,
-            FileItemField.Content => GetLang(item.content, lang),
-            FileItemField.Properties => GetLang(item.properties, lang),
+            FileItemCondition.key => item.key,
+            FileItemCondition.name => GetLang(item.name, lang),
+            FileItemCondition.date => item.date,
+            FileItemCondition.supervisor => GetLang(item.supervisor, lang),
+            FileItemCondition.category => item.category,
+            FileItemCondition.content => GetLang(item.content, lang),
+            FileItemCondition.properties => GetLang(item.properties, lang),
             _ => ""
         };
     }
@@ -178,6 +201,29 @@ public sealed partial class PhiInfoTool
 
         return dict.TryGetValue(Language.zh_cn, out var fallback) ? fallback : "";
     }
+
+    public record McpFileItem(
+        string key,
+        int sub_index,
+        string name,
+        string date,
+        string supervisor,
+        string category,
+        string content,
+        string properties
+    );
+
+    public record McpCollectionFolder(
+        int index,
+        string title,
+        string sub_title,
+        string cover
+    );
+
+    public record FileFilter(
+        FileItemCondition type,
+        string value
+    );
 }
 
 public static class FileItemExtensions

@@ -34,7 +34,7 @@ public sealed partial class PhiInfoTool
     [Description("Search Phigros song information. All parameters are filters.")]
     public static async Task<List<SongInfo>> PhiInfoSearchSongs(
         IPhiInfoRouter client,
-        [Description("Unique identifier")] string? id = null,
+        [Description("Unique identifiers")] string[]? ids = null,
         [Description("Name")] string? name = null,
         [Description("Composer")] string? composer = null,
         [Description("Illustrator")] string? illustrator = null,
@@ -42,7 +42,8 @@ public sealed partial class PhiInfoTool
         [Description("Level")] Level? level = null,
         [Description("Minimum difficulty")] double? difficultyMin = null,
         [Description("Maximum difficulty")] double? difficultyMax = null,
-        [Description("Maximum number of results")] int? limit = null)
+        [Description("Maximum number of results")]
+        int? limit = null)
     {
         var resp = await client.HandleAsync("/info/songs.json");
         if (resp.code != 200)
@@ -54,7 +55,6 @@ public sealed partial class PhiInfoTool
         if (songs is null)
             return [];
 
-        var hasId = !string.IsNullOrWhiteSpace(id);
         var hasName = !string.IsNullOrWhiteSpace(name);
         var hasComposer = !string.IsNullOrWhiteSpace(composer);
         var hasIllustrator = !string.IsNullOrWhiteSpace(illustrator);
@@ -62,7 +62,7 @@ public sealed partial class PhiInfoTool
 
         var filterSongs = songs.Where(song =>
         {
-            if (hasId && !song.id.Equals(id)) return false;
+            if (ids is { Length: > 0 } && !ids.Contains(song.id)) return false;
             if (hasName && !song.name.FuzzyMatch(name!)) return false;
             if (hasComposer && !song.composer.FuzzyMatch(composer!)) return false;
             if (hasIllustrator && !song.illustrator.FuzzyMatch(illustrator!)) return false;

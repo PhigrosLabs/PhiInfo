@@ -14,11 +14,11 @@ namespace PhiInfo.Mcp;
 [JsonSerializable(typeof(double?))]
 [JsonSerializable(typeof(PhiInfoTool.DifficultyRange))]
 [JsonSerializable(typeof(PhiInfoTool.Level?))]
-[JsonSerializable(typeof(PhiInfoTool.FileItemField?))]
+[JsonSerializable(typeof(PhiInfoTool.FileItemCondition?))]
 [JsonSerializable(typeof(int?))]
 [JsonSerializable(typeof(List<PhiInfoTool.McpChapterInfo>))]
 [JsonSerializable(typeof(List<PhiInfoTool.McpCollectionFolder>))]
-[JsonSerializable(typeof(Dictionary<PhiInfoTool.FileItemField,string>))]
+[JsonSerializable(typeof(List<PhiInfoTool.FileFilter>))]
 [JsonSerializable(typeof(List<PhiInfoTool.McpFileItem>))]
 public partial class McpJsonContext : JsonSerializerContext
 {
