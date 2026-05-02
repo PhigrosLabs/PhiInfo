@@ -1,13 +1,13 @@
 export interface JsPhiResponse {
-  code: number;
-  mime: string;
-  data: Buffer;
+    code: number;
+    mime: string;
+    data: Buffer;
 }
 
 export function init(
-  files: string[],
-  image_format: string,
-  cldb_data: Buffer
+    files: string[],
+    image_format: string,
+    cldb_data: Buffer
 ): void;
 
 export function reset(): void;

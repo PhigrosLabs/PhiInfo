@@ -2,10 +2,12 @@
 
     <ItemGroup>
         <ProjectReference Include="..\PhiInfo.Processing\PhiInfo.Processing.csproj"/>
+        <ProjectReference Include="..\PhiInfo.Mcp\PhiInfo.Mcp.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="System.CommandLine" Version="2.0.5"/>
+        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.2.0"/>
     </ItemGroup>
 
     <PropertyGroup>

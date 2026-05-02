@@ -93,7 +93,8 @@ internal class Program
         {
             HttpServer.Command,
             Export.Command,
-            Tool.Command
+            Tool.Command,
+            McpServer.Command
         }
     };
 

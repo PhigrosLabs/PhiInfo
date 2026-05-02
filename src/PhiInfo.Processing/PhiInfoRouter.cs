@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
+using System.Threading.Tasks;
 using LibCpp2IL;
 using PhiInfo.Core;
 using PhiInfo.Core.Asset;
@@ -35,7 +36,7 @@ public partial class JsonContext : JsonSerializerContext
 {
 }
 
-public class PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat? imageFormat = null)
+public class PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat? imageFormat = null) : IPhiInfoRouter
 {
     private const string ApiVersion = "1.0";
 
@@ -58,6 +59,11 @@ public class PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat?
     public PhiInfoRouter(PhiInfoContext context, AppInfo appInfo, string apiType, IImageFormat? imageFormat = null)
         : this(context, apiType, imageFormat)
     {
+    }
+
+    public async Task<Response> HandleAsync(string path)
+    {
+        return Handle(path);
     }
 
     public Response Handle(string path)

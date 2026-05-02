@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 
 #pragma warning disable IDE1006
 #pragma warning disable IDE0130
@@ -18,4 +19,9 @@ public record Response(ushort code, string? mime, byte[]? data);
 public interface IOutputWriter
 {
     Stream Create(string path, string mime);
+}
+
+public interface IPhiInfoRouter
+{
+    public Task<Response> HandleAsync(string path);
 }
