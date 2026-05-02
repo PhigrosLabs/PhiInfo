@@ -30,7 +30,7 @@ internal static class Tool
         JsonSerializer.SerializeToUtf8Bytes(context.Info.ExtractAvatars(), JsonContext.ListAvatar));
 
     private static readonly Command InfoTipsCommand = CreateInfoCommand("tips", context =>
-        JsonSerializer.SerializeToUtf8Bytes(context.Info.ExtractTips(), JsonContext.ListString));
+        JsonSerializer.SerializeToUtf8Bytes(context.Info.ExtractTips(), JsonContext.DictionaryLanguageListString));
 
     private static readonly Command InfoChaptersCommand = CreateInfoCommand("chapters", context =>
         JsonSerializer.SerializeToUtf8Bytes(context.Info.ExtractChapters(), JsonContext.ListChapterInfo));
