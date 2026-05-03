@@ -34,8 +34,14 @@ public class AndroidPackagesDataProvider(IEnumerable<ShuaZip> zips, Stream cldbS
 
     public byte[] GetGlobalMetadata()
     {
-        var (zip, entry) = FindEntryInAllZips("assets/bin/Data/Managed/Metadata/global-metadata.dat");
-        return zip.ReadFile(entry);
+        if (TryFindEntryInAllZips("assets/bin/Data/Managed/Metadata/game.dat", out var zip, out var entry))
+        {
+            var data = zip.ReadFile(entry);
+            return DecryptOldMetaData.Decrypt(data);
+        }
+        
+        var (zip2, entry2) = FindEntryInAllZips("assets/bin/Data/Managed/Metadata/global-metadata.dat");
+        return zip2.ReadFile(entry2);
     }
 
     public Stream GetLevel0()
