@@ -19,6 +19,7 @@
         <OptimizationPreference>Size</OptimizationPreference>
         <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
         <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <PropertyGroup>

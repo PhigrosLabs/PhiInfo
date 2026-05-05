@@ -59,7 +59,7 @@ internal static class CatalogParser
             var key = keys[i];
             var bundle = FindBundleForKey(buckets[i], entries, buckets);
             if (!string.IsNullOrWhiteSpace(bundle))
-                result[key] = bundle;
+                result[key] = bundle!;
         }
 
         return result;
