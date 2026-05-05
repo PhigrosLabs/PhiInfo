@@ -1,14 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 
 #pragma warning disable IDE1006
 #pragma warning disable IDE0130
 
 namespace PhiInfo.Processing.Type;
-
-[Obsolete]
-public record AppInfo(string version, string type);
 
 public record struct Suffix(string image, string text, string music);
 

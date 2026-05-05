@@ -3,7 +3,7 @@ using AssetRipper.TextureDecoder.Etc;
 using AssetRipper.TextureDecoder.Rgb.Formats;
 using Fmod5Sharp;
 using Fmod5Sharp.CodecRebuilders;
-using PhiInfo.Core.Asset;
+using Shua.UA.Core.Asset;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;

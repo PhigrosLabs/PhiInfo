@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 internal record RawCatalog(
     [property: JsonPropertyName("m_KeyDataString")]

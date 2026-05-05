@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace PhiInfo.Core.Info;
+namespace Shua.UA.Core.Field;
 
 public interface IFieldDataProvider
 {
@@ -8,10 +8,4 @@ public interface IFieldDataProvider
     Stream GetGlobalGameManagers();
     byte[] GetIl2CppBinary();
     byte[] GetGlobalMetadata();
-}
-
-public interface IInfoDataProvider
-{
-    Stream GetLevel0();
-    Stream GetLevel22();
 }

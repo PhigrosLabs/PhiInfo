@@ -23,12 +23,12 @@ public static class DecryptOldMetaData
         var (_, keySize, keyDataOff) = key.Value;
 
         var rc4Key = data.Slice(keyDataOff, keySize).ToArray();
-        
+
         var metadata = data.Slice(metaDataOff, metaSize).ToArray();
         Rc4CryptInPlace(metadata, rc4Key);
-        
+
         var stringDataOffset = BinaryPrimitives.ReadUInt32LittleEndian(metadata.AsSpan(24));
-        var stringDataSize   = BinaryPrimitives.ReadUInt32LittleEndian(metadata.AsSpan(28));
+        var stringDataSize = BinaryPrimitives.ReadUInt32LittleEndian(metadata.AsSpan(28));
 
         DecryptStrings(metadata, (int)stringDataOffset, (int)stringDataSize);
 
@@ -42,7 +42,7 @@ public static class DecryptOldMetaData
         while (pos + 8 <= buf.Length)
         {
             var curMagic = BinaryPrimitives.ReadUInt32LittleEndian(buf.Slice(pos, 4));
-            var curSize  = BinaryPrimitives.ReadUInt32LittleEndian(buf.Slice(pos + 4, 4));
+            var curSize = BinaryPrimitives.ReadUInt32LittleEndian(buf.Slice(pos + 4, 4));
 
             if (curMagic == magic)
                 return (pos, (int)curSize, pos + CHUNK_HDR);

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,10 +10,9 @@ using System.Text.Unicode;
 using System.Threading.Tasks;
 using LibCpp2IL;
 using PhiInfo.Core;
-using PhiInfo.Core.Asset;
-using PhiInfo.Core.Info;
 using PhiInfo.Core.Type;
 using PhiInfo.Processing.Type;
+using Shua.UA.Core.Asset;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -54,12 +52,6 @@ public class PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat?
     });
 
     private readonly Suffix _suffix = new((imageFormat ?? JpegFormat.Instance).FileExtensions.First(), "txt", "ogg");
-
-    [Obsolete("Use PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat? imageFormat = null)")]
-    public PhiInfoRouter(PhiInfoContext context, AppInfo appInfo, string apiType, IImageFormat? imageFormat = null)
-        : this(context, apiType, imageFormat)
-    {
-    }
 
     public async Task<Response> HandleAsync(string path)
     {
@@ -154,7 +146,7 @@ public class PhiInfoRouter(PhiInfoContext context, string apiType, IImageFormat?
 #endif
 
             case "/info/version.json":
-                var version = SerializeJson(context.Field.GetPhiVersion(), JsonContext.PhiVersion);
+                var version = SerializeJson(context.Info.GetPhiVersion(), JsonContext.PhiVersion);
                 return new Response(200, "application/json", version);
 
             case "/api_info.json":

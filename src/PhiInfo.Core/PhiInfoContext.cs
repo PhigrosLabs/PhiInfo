@@ -1,7 +1,7 @@
 ﻿using System;
-using PhiInfo.Core.Asset;
-using PhiInfo.Core.Info;
 using PhiInfo.Core.Type;
+using Shua.UA.Core.Asset;
+using Shua.UA.Core.Field;
 
 namespace PhiInfo.Core;
 

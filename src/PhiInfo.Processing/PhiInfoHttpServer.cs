@@ -3,7 +3,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using PhiInfo.Core;
-using PhiInfo.Processing.Type;
 using SixLabors.ImageSharp.Formats;
 
 namespace PhiInfo.Processing;
@@ -28,17 +27,6 @@ public class PhiInfoHttpServer : IDisposable
         _listener.IgnoreWriteExceptions = true;
         _listener.Start();
         _listenerTask = ListenLoopAsync(_cts.Token);
-    }
-
-    [Obsolete(
-        "Use PhiInfoHttpServer(PhiInfoContext context, uint port = 41669, string host = \"127.0.0.1\", IImageFormat? imageFormat = null)")]
-    public PhiInfoHttpServer(
-        PhiInfoContext context,
-        AppInfo appInfo,
-        uint port = 41669,
-        string host = "127.0.0.1",
-        IImageFormat? imageFormat = null) : this(context, port, host, imageFormat)
-    {
     }
 
     public bool IsRunning => _listener.IsListening;

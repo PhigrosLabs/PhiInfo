@@ -6,14 +6,14 @@ using System.IO;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 public class UnityMusic : UnityAsset
 {
     public float Length { get; private set; }
     public Stream Data { get; private set; } = null!;
 
-    internal override void Init(Stream bundleStream)
+    protected internal override void Init(Stream bundleStream)
     {
         base.Init(bundleStream);
 

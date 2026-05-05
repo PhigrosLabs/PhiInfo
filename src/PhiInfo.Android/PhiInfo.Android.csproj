@@ -19,6 +19,7 @@
         <OptimizationPreference>Size</OptimizationPreference>
         <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
         <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -28,7 +29,6 @@
         <GitHash>dev</GitHash>
         <ApplicationVersion>2</ApplicationVersion>
         <ApplicationDisplayVersion>2.0.1+$(GitHash)</ApplicationDisplayVersion>
-        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     </PropertyGroup>
 </Project>

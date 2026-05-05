@@ -7,8 +7,8 @@ using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
 using System.Threading.Tasks;
 using PhiInfo.Core;
-using PhiInfo.Core.Asset;
 using PhiInfo.Processing.Type;
+using Shua.UA.Core.Asset;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -43,7 +43,7 @@ public class PhiInfoExport(PhiInfoContext context, string apiType, IImageFormat?
         WriteJson("/info/tips.json", context.Info.ExtractTips(), JsonContext.DictionaryLanguageListString,
             outputWriter);
         WriteJson("/info/chapters.json", context.Info.ExtractChapters(), JsonContext.ListChapterInfo, outputWriter);
-        WriteJson("/info/version.json", context.Field.GetPhiVersion(), JsonContext.PhiVersion, outputWriter);
+        WriteJson("/info/version.json", context.Info.GetPhiVersion(), JsonContext.PhiVersion, outputWriter);
     }
 
     private void ExportSystem(IOutputWriter outputWriter)

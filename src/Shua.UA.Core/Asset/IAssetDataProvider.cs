@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 public interface IAssetDataProvider
 {

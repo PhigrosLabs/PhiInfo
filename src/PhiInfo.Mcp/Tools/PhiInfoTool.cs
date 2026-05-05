@@ -8,7 +8,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
-using PhiInfo.Core.Info;
 using PhiInfo.Core.Type;
 using PhiInfo.Processing;
 using PhiInfo.Processing.Type;

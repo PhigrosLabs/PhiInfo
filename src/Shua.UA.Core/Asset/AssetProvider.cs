@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 public class AssetProvider(IAssetDataProvider dataProvider)
 {

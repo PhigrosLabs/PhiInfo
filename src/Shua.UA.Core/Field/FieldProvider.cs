@@ -1,13 +1,13 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using AssetsTools.NET;
 using AssetsTools.NET.Cpp2IL;
 using AssetsTools.NET.Extra;
 using LibCpp2IL;
 using LibCpp2IL.Logging;
+using LibCpp2IL.Metadata;
 
-namespace PhiInfo.Core.Info;
+namespace Shua.UA.Core.Field;
 
 internal class LibLogWriter : LogWriter
 {
@@ -189,38 +189,10 @@ public class FieldProvider : IDisposable
         return baseField;
     }
 
-    public PhiVersion GetPhiVersion()
+    public Il2CppMetadata GetMetadata()
     {
         _ = _templateGenerator.Value;
-        var meta = LibCpp2IlMain.TheMetadata!;
-
-        var assembly = meta.AssemblyDefinitions
-                           .FirstOrDefault(a => a.AssemblyName.Name == "Assembly-CSharp")
-                       ?? throw new InvalidDataException("Cannot find Assembly-CSharp.");
-
-        var type = assembly.Image.Types?
-                       .FirstOrDefault(t => t.FullName == "Constants")
-                   ?? throw new InvalidDataException("Cannot find Constants class.");
-
-        var codeField = type.Fields?
-                            .FirstOrDefault(f => f.Name == "IntVersion")
-                        ?? throw new InvalidDataException("Cannot find IntVersion field.");
-
-        var codeDefaultValue = meta.GetFieldDefaultValue(codeField)?.Value
-                               ?? throw new InvalidDataException("There is no default value for the IntVersion field.");
-
-        var nameField = type.Fields?
-                            .FirstOrDefault(f => f.Name == "Version")
-                        ?? throw new InvalidDataException("Cannot find Version field.");
-
-        var nameDefaultValue = meta.GetFieldDefaultValue(nameField)?.Value
-                               ?? throw new InvalidDataException("There is no default value for the Version field.");
-
-        if (codeDefaultValue is int intValue && nameDefaultValue is string stringValue)
-            return new PhiVersion((uint)intValue, stringValue);
-
-        throw new InvalidDataException(
-            $"Invalid version type: {nameDefaultValue.GetType()} and {codeDefaultValue.GetType()}");
+        return LibCpp2IlMain.TheMetadata!;
     }
 
     private bool GetMonoScriptInfo(

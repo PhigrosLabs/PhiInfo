@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using AssetsTools.NET;
 using PhiInfo.Core.Type;
+using Shua.UA.Core.Field;
 
-namespace PhiInfo.Core.Info;
+namespace PhiInfo.Core;
 
 public class InfoProvider : IDisposable
 {
@@ -211,9 +213,42 @@ public class InfoProvider : IDisposable
             .ToList();
     }
 
+    public PhiVersion GetPhiVersion()
+    {
+        var meta = _fieldProvider.GetMetadata();
+
+        var assembly = meta.AssemblyDefinitions
+                           .FirstOrDefault(a => a.AssemblyName.Name == "Assembly-CSharp")
+                       ?? throw new InvalidDataException("Cannot find Assembly-CSharp.");
+
+        var type = assembly.Image.Types?
+                       .FirstOrDefault(t => t.FullName == "Constants")
+                   ?? throw new InvalidDataException("Cannot find Constants class.");
+
+        var codeField = type.Fields?
+                            .FirstOrDefault(f => f.Name == "IntVersion")
+                        ?? throw new InvalidDataException("Cannot find IntVersion field.");
+
+        var codeDefaultValue = meta.GetFieldDefaultValue(codeField)?.Value
+                               ?? throw new InvalidDataException("There is no default value for the IntVersion field.");
+
+        var nameField = type.Fields?
+                            .FirstOrDefault(f => f.Name == "Version")
+                        ?? throw new InvalidDataException("Cannot find Version field.");
+
+        var nameDefaultValue = meta.GetFieldDefaultValue(nameField)?.Value
+                               ?? throw new InvalidDataException("There is no default value for the Version field.");
+
+        if (codeDefaultValue is int intValue && nameDefaultValue is string stringValue)
+            return new PhiVersion((uint)intValue, stringValue);
+
+        throw new InvalidDataException(
+            $"Invalid version type: {nameDefaultValue.GetType()} and {codeDefaultValue.GetType()}");
+    }
+
     public AllInfo ExtractAllInfo()
     {
-        return new AllInfo(_fieldProvider.GetPhiVersion(), ExtractSongs(), ExtractCollection(), ExtractAvatars(),
-            ExtractTips(), ExtractChapters());
+        return new AllInfo(GetPhiVersion(), ExtractSongs(), ExtractCollection(), ExtractAvatars(), ExtractTips(),
+            ExtractChapters());
     }
 }

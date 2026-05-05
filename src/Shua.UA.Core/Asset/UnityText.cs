@@ -5,13 +5,13 @@ using System;
 using System.IO;
 using AssetsTools.NET.Extra;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 public class UnityText : UnityAsset
 {
     public string Content { get; private set; } = string.Empty;
 
-    internal override void Init(Stream bundleStream)
+    protected internal override void Init(Stream bundleStream)
     {
         base.Init(bundleStream);
 

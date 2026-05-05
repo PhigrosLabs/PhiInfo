@@ -39,7 +39,7 @@ public class AndroidPackagesDataProvider(IEnumerable<ShuaZip> zips, Stream cldbS
             var data = zip.ReadFile(entry);
             return DecryptOldMetaData.Decrypt(data);
         }
-        
+
         var (zip2, entry2) = FindEntryInAllZips("assets/bin/Data/Managed/Metadata/global-metadata.dat");
         return zip2.ReadFile(entry2);
     }

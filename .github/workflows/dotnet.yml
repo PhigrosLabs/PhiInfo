@@ -30,8 +30,6 @@ jobs:
       uses: actions/setup-dotnet@v5.1.0
       with:
         dotnet-version: "10.0"
-        cache: true
-        cache-dependency-path: ./src/PhiInfo.Android/packages.lock.json
 
     - name: Setup Tpk
       run: |
@@ -41,20 +39,12 @@ jobs:
     - name: Restore PhiInfo
       run: |
         dotnet workload install android
-        dotnet restore ./src/Shua.Zip/Shua.Zip.csproj
-        dotnet restore ./src/PhiInfo.Core/PhiInfo.Core.csproj
-        dotnet restore ./src/PhiInfo.Processing/PhiInfo.Processing.csproj
-        dotnet restore ./src/PhiInfo.Mcp/PhiInfo.Mcp.csproj
-        dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj
-        dotnet restore ./src/PhiInfo.Android/PhiInfo.Android.csproj
+        dotnet restore
 
     - name: Pack NuGet Packages
       run: |
         mkdir -p nuget
-        dotnet pack ./src/PhiInfo.Core/PhiInfo.Core.csproj --configuration Release --no-restore -p:GitHash=$SHA7 -o ./nuget
-        dotnet pack ./src/Shua.Zip/Shua.Zip.csproj --configuration Release --no-restore -p:GitHash=$SHA7 -o ./nuget
-        dotnet pack ./src/PhiInfo.Processing/PhiInfo.Processing.csproj --configuration Release --no-restore -p:GitHash=$SHA7 -o ./nuget
-        dotnet pack ./src/PhiInfo.Mcp/PhiInfo.Mcp.csproj --configuration Release --no-restore -p:GitHash=$SHA7 -o ./nuget
+        dotnet pack --configuration Release --no-restore -p:GitHash=$SHA7 -o ./nuget
 
     - name: Upload NuGet Packages
       uses: actions/upload-artifact@v7

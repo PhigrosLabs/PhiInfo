@@ -3,7 +3,7 @@ using System.IO;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 
-namespace PhiInfo.Core.Asset;
+namespace Shua.UA.Core.Asset;
 
 public abstract class UnityAsset : IDisposable
 {
@@ -17,7 +17,7 @@ public abstract class UnityAsset : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    internal virtual void Init(Stream bundleStream)
+    protected internal virtual void Init(Stream bundleStream)
     {
         var reader = new AssetsFileReader(bundleStream);
         Bundle.Read(reader);

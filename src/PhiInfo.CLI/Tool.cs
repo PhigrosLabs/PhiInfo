@@ -5,8 +5,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using PhiInfo.Core;
-using PhiInfo.Core.Asset;
 using PhiInfo.Processing;
+using Shua.UA.Core.Asset;
 using SixLabors.ImageSharp;
 using JsonContext = PhiInfo.Processing.JsonContext;
 
@@ -39,7 +39,7 @@ internal static class Tool
         JsonSerializer.SerializeToUtf8Bytes(context.Info.ExtractAllInfo(), JsonContext.AllInfo));
 
     private static readonly Command InfoVersionCommand = CreateInfoCommand("version", context =>
-        JsonSerializer.SerializeToUtf8Bytes(context.Field.GetPhiVersion(), JsonContext.PhiVersion));
+        JsonSerializer.SerializeToUtf8Bytes(context.Info.GetPhiVersion(), JsonContext.PhiVersion));
 
     private static readonly Argument<string> BundleNameArgument = new("name")
     {
