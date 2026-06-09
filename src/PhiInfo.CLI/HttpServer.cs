@@ -3,6 +3,8 @@ using System.CommandLine;
 using System.Threading;
 using PhiInfo.Core;
 using PhiInfo.Processing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 
 namespace PhiInfo.CLI;
 
@@ -34,16 +36,18 @@ internal static class HttpServer
     {
         var port = parseResult.GetValue(PortOption);
         var host = parseResult.GetValue(HostOption)!;
+        var formatName = parseResult.GetValue(Program.ImageFormatOption)!;
+        var format = Configuration.Default.ImageFormatsManager.FindByName(formatName);
 
-        RunServerMode(Program.GetContext(parseResult), port, host);
+        RunServerMode(Program.GetContext(parseResult), port, host, format);
         return 0;
     }
 
-    private static void RunServerMode(PhiInfoContext context, uint port, string host)
+    private static void RunServerMode(PhiInfoContext context, uint port, string host, IImageFormat? format)
     {
         using var exitEvent = new ManualResetEventSlim(false);
 
-        using var server = new PhiInfoHttpServer(context, port, host);
+        using var server = new PhiInfoHttpServer(context, port, host, format);
 
         server.OnRequestError += (_, ex) => { Console.WriteLine($"Server error: {ex}"); };
 
