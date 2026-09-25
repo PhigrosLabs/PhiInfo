@@ -10,27 +10,72 @@ namespace PhiInfo.Core;
 
 public class InfoProvider : IDisposable
 {
+    // 4.0.0 (code 155) 起收藏品数据被拆成两份:文件夹仍在 SaturnOS 场景里,
+    // 条目则迁移到 sharedassets22.assets,且以 getSong 的绝对值作为索引。
+    private const uint SharedAssetsCollectionVersion = 155;
+    private const string CollectionSceneScript = "SaturnOSControl";
+    private const string CollectionSceneFileName = "level22";
+    private const string CollectionDatabaseScript = "CollectionDatabase";
+    private const string SharedAssetsFileName = "sharedassets22.assets";
+
+    private readonly IInfoDataProvider _dataProvider;
     private readonly FieldProvider _fieldProvider;
     private readonly Lazy<AssetsFile> _level0;
-    private readonly Lazy<AssetsFile> _level22;
+    private readonly Lazy<AssetsFile> _collectionScene;
+    private readonly Lazy<AssetsFile> _collectionDatabase;
+    private readonly Lazy<PhiVersion> _version;
     private bool _disposed;
 
     public InfoProvider(IInfoDataProvider dataProvider, FieldProvider fieldProvider)
     {
+        _dataProvider = dataProvider;
         _fieldProvider = fieldProvider;
-        _level0 = new Lazy<AssetsFile>(() =>
-        {
-            var file = new AssetsFile();
-            file.Read(new AssetsFileReader(dataProvider.GetLevel0()));
-            return file;
-        });
+        _level0 = new Lazy<AssetsFile>(() => ReadAssetsFile(dataProvider.GetDataFile("level0")));
+        _collectionScene = new Lazy<AssetsFile>(() =>
+            FindMonoBehaviourFile(CollectionSceneScript, CollectionSceneFileName));
+        _collectionDatabase = new Lazy<AssetsFile>(() =>
+            FindMonoBehaviourFile(CollectionDatabaseScript, SharedAssetsFileName));
+        _version = new Lazy<PhiVersion>(GetPhiVersion);
+    }
 
-        _level22 = new Lazy<AssetsFile>(() =>
+    private static AssetsFile ReadAssetsFile(Stream stream)
+    {
+        var file = new AssetsFile();
+        file.Read(new AssetsFileReader(stream));
+        return file;
+    }
+
+    /// <summary>
+    ///     找出包含指定 MonoBehaviour 的资源文件。优先尝试已知文件名,版本变动导致位置变化时按文件名扫描。
+    /// </summary>
+    private AssetsFile FindMonoBehaviourFile(string scriptName, string preferredFileName)
+    {
+        var names = new List<string> { preferredFileName };
+
+        foreach (var name in _dataProvider.GetDataFileNames())
         {
-            var file = new AssetsFile();
-            file.Read(new AssetsFileReader(dataProvider.GetLevel22()));
-            return file;
-        });
+            if (name != preferredFileName)
+                names.Add(name);
+        }
+
+        foreach (var name in names)
+        {
+            try
+            {
+                var file = ReadAssetsFile(_dataProvider.GetDataFile(name));
+
+                if (_fieldProvider.TryFindMonoBehaviour(file, scriptName) is not null)
+                    return file;
+
+                file.Close();
+            }
+            catch (Exception)
+            {
+                // 不是资源文件或读取失败时继续尝试下一个
+            }
+        }
+
+        throw new InvalidOperationException($"Cannot find {scriptName} in the provided packages.");
     }
 
     public void Dispose()
@@ -46,11 +91,9 @@ public class InfoProvider : IDisposable
 
         if (disposing)
         {
-            if (_level0.IsValueCreated)
-                _level0.Value.Close();
-
-            if (_level22.IsValueCreated)
-                _level22.Value.Close();
+            foreach (var file in new[] { _level0, _collectionScene, _collectionDatabase })
+                if (file.IsValueCreated)
+                    file.Value.Close();
         }
     }
 
@@ -124,23 +167,17 @@ public class InfoProvider : IDisposable
 
     public List<Folder> ExtractCollection()
     {
-        var control = _fieldProvider.FindMonoBehaviour(_level22.Value, "SaturnOSControl")
+        if (_version.Value.code >= SharedAssetsCollectionVersion)
+            return ExtractCollectionFromSharedAssets();
+
+        var control = _fieldProvider.FindMonoBehaviour(_collectionScene.Value, CollectionSceneScript)
                       ?? throw new InvalidOperationException("SaturnOSControl MonoBehaviour not found");
 
         return control["folders"]["Array"].Children
             .Select(folder =>
             {
                 var files = folder["files"]["Array"].Children
-                    .Select(file => new FileItem(
-                        file["key"].AsString,
-                        file["subIndex"].AsInt,
-                        ExtractMultiLang(file["name"]),
-                        file["date"].AsString,
-                        ExtractMultiLang(file["supervisor"]),
-                        file["category"].AsString,
-                        ExtractMultiLang(file["content"], v => v.Replace("\\n", "\n")),
-                        ExtractMultiLang(file["properties"])
-                    ))
+                    .Select(ExtractFileItem)
                     .ToList();
 
                 return new Folder(
@@ -152,6 +189,74 @@ public class InfoProvider : IDisposable
             })
             .ToList();
     }
+
+    private List<Folder> ExtractCollectionFromSharedAssets()
+    {
+        var database = _fieldProvider.FindMonoBehaviour(_collectionDatabase.Value, CollectionDatabaseScript)
+                       ?? throw new InvalidOperationException("CollectionDatabase MonoBehaviour not found");
+
+        var items = database["items"]["Array"].Children
+            .Select(item => new CollectionEntry(ExtractFileItem(item), Math.Abs(item["getSong"].AsInt)))
+            .ToList();
+
+        var control = _fieldProvider.FindMonoBehaviour(_collectionScene.Value, CollectionSceneScript)
+                      ?? throw new InvalidOperationException("SaturnOSControl MonoBehaviour not found");
+
+        return control["folders"]["Array"].Children
+            .Select(folder => new Folder(
+                ExtractMultiLang(folder["title"]),
+                ExtractMultiLang(folder["subTitle"]),
+                folder["cover"].AsString,
+                ExtractFolderFiles(folder, items)
+            ))
+            .ToList();
+    }
+
+    private static List<FileItem> ExtractFolderFiles(AssetTypeValueField folder, List<CollectionEntry> items)
+    {
+        var start = folder["startIndex"].AsInt;
+        var end = folder["endIndex"].AsInt;
+
+        var excluded = folder["excludedFiles"]["Array"].Children
+            .Select(range => (Start: range["start"].AsInt, End: range["end"].AsInt))
+            .ToList();
+
+        var files = items
+            .Where(item => item.Index >= start && item.Index <= end &&
+                           !excluded.Any(range => item.Index >= range.Start && item.Index <= range.End))
+            .Select(item => item.File)
+            .ToList();
+
+        // 索引区间之外的条目由 includedIsolatedFiles 单独指定
+        foreach (var reference in folder["includedIsolatedFiles"]["Array"].Children)
+        {
+            var key = reference["key"].AsString;
+            var subIndex = reference["subIndex"].AsInt;
+
+            var item = items.FirstOrDefault(entry => entry.File.key == key && entry.File.sub_index == subIndex);
+
+            if (item != null && !files.Contains(item.File))
+                files.Add(item.File);
+        }
+
+        return files;
+    }
+
+    private static FileItem ExtractFileItem(AssetTypeValueField file)
+    {
+        return new FileItem(
+            file["key"].AsString,
+            file["subIndex"].AsInt,
+            ExtractMultiLang(file["name"]),
+            file["date"].AsString,
+            ExtractMultiLang(file["supervisor"]),
+            file["category"].AsString,
+            ExtractMultiLang(file["content"], v => v.Replace("\\n", "\n")),
+            ExtractMultiLang(file["properties"])
+        );
+    }
+
+    private sealed record CollectionEntry(FileItem File, int Index);
 
     public List<Avatar> ExtractAvatars()
     {

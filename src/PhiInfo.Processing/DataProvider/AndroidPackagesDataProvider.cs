@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using PhiInfo.Core.Type;
 using Shua.Zip;
 
@@ -10,6 +9,8 @@ namespace PhiInfo.Processing.DataProvider;
 
 public class AndroidPackagesDataProvider(IEnumerable<ShuaZip> zips, Stream cldbStream) : IDataProvider
 {
+    private const string DataPrefix = "assets/bin/Data/";
+    private const string RuntimePathPlaceholder = "{UnityEngine.AddressableAssets.Addressables.RuntimePath}";
     private bool _disposed;
 
     public Stream GetCldb()
@@ -44,44 +45,73 @@ public class AndroidPackagesDataProvider(IEnumerable<ShuaZip> zips, Stream cldbS
         return zip2.ReadFile(entry2);
     }
 
-    public Stream GetLevel0()
+    public Stream GetDataFile(string name)
     {
-        var (zip, entry) = FindEntryInAllZips("assets/bin/Data/level0");
-        return EnsureSeekable(zip.OpenFileStream(entry));
-    }
+        if (TryFindEntryInAllZips(DataPrefix + name, out var zip, out var entry))
+            return EnsureSeekable(zip.OpenFileStream(entry));
 
-    public Stream GetLevel22()
-    {
-        var level22Parts = new List<(int index, string name, ShuaZip zip)>();
+        // 旧版本会把 level 等文件切成 <name>.splitN 分片
+        var partPrefix = DataPrefix + name + ".split";
+        var parts = new List<(int index, string name, ShuaZip zip)>();
 
-        foreach (var zip in zips)
+        foreach (var item in zips)
         {
-            var entries = zip.Eocd.FileEntries
-                .Where(e => e.Name.StartsWith("assets/bin/Data/level22.split", StringComparison.Ordinal));
-
-            foreach (var entry in entries)
+            foreach (var fileEntry in item.Eocd.FileEntries)
             {
-                var suffix = entry.Name["assets/bin/Data/level22.split".Length..];
+                if (!fileEntry.Name.StartsWith(partPrefix, StringComparison.Ordinal))
+                    continue;
+
+                var suffix = fileEntry.Name[partPrefix.Length..];
                 if (int.TryParse(suffix, out var index))
-                    level22Parts.Add((index, entry.Name, zip));
+                    parts.Add((index, fileEntry.Name, item));
             }
         }
 
-        if (level22Parts.Count == 0)
-            throw new FileNotFoundException("Required Unity assets missing from APK");
+        if (parts.Count == 0)
+            throw new FileNotFoundException($"Required Unity asset '{DataPrefix}{name}' missing from provided packages.");
 
-        level22Parts.Sort((a, b) => a.index.CompareTo(b.index));
+        parts.Sort((a, b) => a.index.CompareTo(b.index));
 
-        MemoryStream level22 = new();
+        MemoryStream data = new();
 
-        foreach (var (_, name, zip) in level22Parts)
+        foreach (var (_, partName, partZip) in parts)
         {
-            var data = zip.ReadFileByName(name);
-            level22.Write(data, 0, data.Length);
+            var part = partZip.ReadFileByName(partName);
+            data.Write(part, 0, part.Length);
         }
 
-        level22.Position = 0;
-        return level22;
+        data.Position = 0;
+        return data;
+    }
+
+    public IReadOnlyList<string> GetDataFileNames()
+    {
+        var names = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var zip in zips)
+        {
+            foreach (var entry in zip.Eocd.FileEntries)
+            {
+                if (!entry.Name.StartsWith(DataPrefix, StringComparison.Ordinal))
+                    continue;
+
+                var name = entry.Name[DataPrefix.Length..];
+
+                // 跳过子目录与 .resource 资源流
+                if (name.Contains('/') || name.EndsWith(".resource", StringComparison.Ordinal))
+                    continue;
+
+                var splitIndex = name.IndexOf(".split", StringComparison.Ordinal);
+                if (splitIndex > 0)
+                    name = name[..splitIndex];
+
+                if (seen.Add(name))
+                    names.Add(name);
+            }
+        }
+
+        return names;
     }
 
     public Stream GetCatalog()
@@ -92,9 +122,23 @@ public class AndroidPackagesDataProvider(IEnumerable<ShuaZip> zips, Stream cldbS
 
     public Stream GetBundle(string name)
     {
-        var (zip, entry) =
-            FindEntryInAllZips(name.Replace("{UnityEngine.AddressableAssets.Addressables.RuntimePath}", "assets/aa"));
-        return EnsureSeekable(zip.OpenFileStream(entry));
+        var path = name.Replace(RuntimePathPlaceholder, "assets/aa");
+
+        if (TryFindEntryInAllZips(path, out var zip, out var entry))
+            return EnsureSeekable(zip.OpenFileStream(entry));
+
+        // 4.0 起 catalog 中的 bundle 名为 <hash1>_<hash2>.bundle,包内实际存放的是 <hash2>.bundle
+        var nameIndex = path.LastIndexOf('/') + 1;
+        var hashIndex = path.IndexOf('_', nameIndex);
+
+        if (hashIndex > nameIndex)
+        {
+            var stripped = string.Concat(path.AsSpan(0, nameIndex), path.AsSpan(hashIndex + 1));
+            if (TryFindEntryInAllZips(stripped, out var strippedZip, out var strippedEntry))
+                return EnsureSeekable(strippedZip.OpenFileStream(strippedEntry));
+        }
+
+        throw new FileNotFoundException($"Required Unity asset '{path}' missing from provided packages.");
     }
 
     public void Dispose()
